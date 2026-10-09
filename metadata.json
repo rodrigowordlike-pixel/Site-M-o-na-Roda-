@@ -1,0 +1,7 @@
+{
+  "name": "Mão na Roda",
+  "description": "Sistema de inteligência e auditoria fiscal de NF-e para o segmento de autopeças. Análise automatizada de ICMS-ST, DIFAL, FCP, IPI, dupla conferência matemática e base legal oficial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

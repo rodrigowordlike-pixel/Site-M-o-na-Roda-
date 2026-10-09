@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-normal">
-                Custo Real da Compra · ICMS-ST do Destinatário · Dossiê de Homologação e Radar 2h
+                Use essa ferramenta para lhe ajudar no dia a dia em alguns cálculos complexos
               </p>
             </div>
           </div>

@@ -160,6 +160,20 @@ export function auditarItem(
     !['10', '30', '70'].includes(cstClean) &&
     !['201', '202', '203'].includes(csosnClean);
 
+  // E. Identificação de NCM Não Sujeito à ST (Fora do Âmbito do ICMS-ST pelo NCM / CEST)
+  const NcmForaDaST =
+    !enquadramentoST &&
+    !temIndicadorXML &&
+    customOverrides?.forcarST !== true;
+
+  // F. Identificação de NCM sem regime de ST na UF de destino
+  const estadoDestinoSemST =
+    enquadramentoST &&
+    enquadramentoST.ufsComSTInterna !== 'TODAS' &&
+    !enquadramentoST.ufsComSTInterna.includes(ufDestino) &&
+    !temIndicadorXML &&
+    customOverrides?.forcarST !== true;
+
   // 1. Determinação da MVA Original e MVA Ajustada
   let mvaOriginal = 71.78;
   if (customOverrides?.mvaManual && customOverrides.mvaManual > 0) {
@@ -350,10 +364,37 @@ export function auditarItem(
       `2. Regime Normal: Fornecedor emitiu sob regime comum de tributação sem destaque de ST.`,
       `3. Resultado: Operação sem antecipação de ST na entrada. Valor a recolher = R$ 0,00.`
     );
+  } else if (NcmForaDaST) {
+    // CASO 7: NCM Fora do Âmbito do ICMS-ST / Isento de ST por NCM
+    classificacao = 'A';
+    classificacaoDescricao = `A — NCM ${item.ncm} Não Sujeito à Substituição Tributária (Fora do Âmbito do ICMS-ST). Operação sem incidência de ICMS-ST.`;
+    responsavel = 'NAO_APLICAVEL';
+    baseSTRinal = 0;
+    valorFinalSTRecolher = 0;
+
+    passoAPasso.push(
+      `1. Análise do NCM: ${item.ncm} (${item.xProd}). CEST: ${item.cest || 'Não informado'}.`,
+      `2. Verificação no Convênio ICMS 142/2018: O NCM ${item.ncm} não pertence a nenhum dos segmentos sujeitos à Substituição Tributária.`,
+      `3. Ausência de Retenção no XML: Não há destaque de ST pelo remetente.`,
+      `4. Resultado: Produto ISENTO de ICMS-ST na entrada. Valor a recolher pelo adquirente = R$ 0,00.`
+    );
+  } else if (estadoDestinoSemST) {
+    // CASO 8: NCM sem regime de ST no Estado de destino
+    classificacao = 'A';
+    classificacaoDescricao = `A — NCM ${item.ncm} sem incidência de ICMS-ST no Estado de destino (${ufDestino}).`;
+    responsavel = 'NAO_APLICAVEL';
+    baseSTRinal = 0;
+    valorFinalSTRecolher = 0;
+
+    passoAPasso.push(
+      `1. Análise do NCM: ${item.ncm} (Segmento: ${enquadramentoST?.segmento}). Estado de Destino: ${ufDestino}.`,
+      `2. Legislação da UF Destino: O Estado de ${ufDestino} não exige o recolhimento de ST para este NCM/Segmento.`,
+      `3. Resultado: Operação ISENTA de ICMS-ST na entrada em ${ufDestino}. Valor a recolher = R$ 0,00.`
+    );
   } else {
-    // CASO 7: Operação Interestadual Sujeita a Antecipação do ICMS-ST pelo Destinatário (Classificação C)
+    // CASO 9: Operação Interestadual Sujeita a Antecipação do ICMS-ST pelo Destinatário (Classificação C)
     classificacao = 'C';
-    classificacaoDescricao = `C — ST devida pelo destinatário: Antecipação na entrada do ${ufDestino} com MVA ajustada (Protocolo ICMS 41/2008).`;
+    classificacaoDescricao = `C — ST devida pelo destinatário: Antecipação na entrada do ${ufDestino} com MVA ajustada (${enquadramentoST?.segmento || 'Convênio 142/2018'}).`;
     responsavel = 'DESTINATARIO';
     baseSTRinal = baseSTCalculada;
     valorFinalSTRecolher = icmsSTCalculado;
@@ -361,7 +402,7 @@ export function auditarItem(
     passoAPasso.push(
       `1. Operação: ${ufOrigem} ➔ ${ufDestino} (Interestadual). Alíquota interestadual aplicável: ${aliqInter}% (${['1', '2', '3', '8'].includes(item.origem) ? 'Importado - Res. Senado 13/12' : 'Nacional'}).`,
       `2. Regime do Emitente: ${nfe.emitente.crtDescricao}. Alíquota interna do destino (${ufDestino}): ${aliqIntraModal}%.`,
-      `3. Segmento: Autopeças (Protocolo ICMS 41/2008 & Convênio 142/2018). MVA Original = ${mvaOriginal.toFixed(2)}%. ${motivoAjusteMVA}`,
+      `3. Enquadramento e Segmento: NCM ${item.ncm} (${enquadramentoST?.segmento || 'Segmento ST'}). MVA Original = ${mvaOriginal.toFixed(2)}%. ${motivoAjusteMVA}`,
       `4. Base de ST: (R$ ${item.vProd.toFixed(2)} [prod] - R$ ${item.vDesc.toFixed(2)} [desc] + R$ ${item.vFrete.toFixed(2)} [frete] + R$ ${item.vOutro.toFixed(2)} [outras] + R$ ${ipiIntegraBaseST ? ipiValor.toFixed(2) : '0,00'} [IPI]) × (1 + ${mvaAplicada.toFixed(2)}%) = R$ ${baseSTRinal.toFixed(2)}.`,
       `5. Débito Bruto de ICMS: R$ ${baseSTRinal.toFixed(2)} × ${aliqIntraModal}% = R$ ${debitoSTBruto.toFixed(2)}.`,
       `6. Dedução do ICMS Próprio: R$ ${debitoSTBruto.toFixed(2)} - R$ ${icmsProprioDeduzivel.toFixed(2)} = ICMS-ST a Recolher de R$ ${icmsSTCalculado.toFixed(2)}.`,
@@ -407,7 +448,7 @@ export function auditarItem(
     ufOrigem,
     ufDestino,
     finalidade === 'UsoConsumo' || finalidade === 'AtivoImobilizado' ? 'DIFAL' : 'ICMS_ST',
-    'Protocolo ICMS 41/2008'
+    enquadramentoST?.conveniosOuProtocolos[0]?.identificacao || 'Convênio ICMS 142/2018'
   );
 
   return {
@@ -416,9 +457,11 @@ export function auditarItem(
     classificacaoDescricao,
     statusCalculo,
     responsavelRecolhimento: responsavel,
-    regimeSTDestino: true,
-    temAcordoInterestadual: true,
-    nomeAcordoInterestadual: 'Protocolo ICMS 41/2008',
+    regimeSTDestino: !NcmForaDaST && !estadoDestinoSemST,
+    temAcordoInterestadual: !!enquadramentoST,
+    nomeAcordoInterestadual: enquadramentoST
+      ? enquadramentoST.conveniosOuProtocolos[0]?.identificacao || 'Convênio ICMS 142/2018'
+      : 'Fora do Âmbito da ST',
     baseST: baseSTRinal,
     mva: mvaAplicada,
     icmsST: valorFinalSTRecolher,

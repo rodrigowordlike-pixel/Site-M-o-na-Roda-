@@ -9,50 +9,82 @@ interface XmlUploaderProps {
     finalidade: 'Revenda' | 'UsoConsumo' | 'AtivoImobilizado' | 'Industrializacao',
     modalidadeAutopecas: ModalidadeMvaAutopecas
   ) => void;
+  onAnalyzeBatchXmls?: (
+    filesData: { name: string; content: string }[],
+    modalidadeAutopecas: ModalidadeMvaAutopecas
+  ) => void;
   isLoading: boolean;
   modalidadeAutopecas: ModalidadeMvaAutopecas;
   onChangeModalidadeAutopecas: (m: ModalidadeMvaAutopecas) => void;
-  onStartLoadingGame: (xmlContent: string, modalidade: ModalidadeMvaAutopecas) => void;
+  onStartLoadingGame: (payload: any, modalidade: ModalidadeMvaAutopecas) => void;
+  onOpenMassImportModal?: () => void;
 }
 
 export const XmlUploader: React.FC<XmlUploaderProps> = ({
   onAnalyzeXml,
+  onAnalyzeBatchXmls,
   isLoading,
   modalidadeAutopecas,
   onChangeModalidadeAutopecas,
   onStartLoadingGame,
+  onOpenMassImportModal,
 }) => {
   const [activeMode, setActiveMode] = useState<'upload' | 'key'>('upload');
   const [chaveAcessoInput, setChaveAcessoInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>('NF-e Exemplo Padrão (Autopeças).xml');
   const [pendingXml, setPendingXml] = useState<string | null>(SAMPLE_NFES[0].xml);
+  const [pendingBatch, setPendingBatch] = useState<{ name: string; content: string }[] | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (file: File) => {
-    if (!file.name.endsWith('.xml') && file.type !== 'text/xml') {
-      setErrorMsg('Por favor, selecione um arquivo válido com extensão .xml');
+  const handleMultipleFilesUpload = (files: FileList | File[]) => {
+    const xmlFiles = Array.from(files).filter(
+      (f) => f.name.endsWith('.xml') || f.type === 'text/xml'
+    );
+
+    if (xmlFiles.length === 0) {
+      setErrorMsg('Por favor, selecione arquivos válidos com extensão .xml');
       return;
     }
+
     setErrorMsg(null);
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setPendingXml(content);
-    };
-    reader.onerror = () => {
-      setErrorMsg('Erro ao ler o arquivo XML selecionado.');
-    };
-    reader.readAsText(file);
+
+    if (xmlFiles.length === 1) {
+      const file = xmlFiles[0];
+      setFileName(file.name);
+      setPendingBatch(null);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPendingXml(e.target?.result as string);
+      };
+      reader.readAsText(file);
+    } else {
+      // Múltiplos arquivos (Importação em Massa)
+      setFileName(`Lote em Massa: ${xmlFiles.length} Arquivos XML`);
+      let loaded = 0;
+      const batchList: { name: string; content: string }[] = [];
+
+      xmlFiles.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          batchList.push({ name: file.name, content: e.target?.result as string });
+          loaded++;
+          if (loaded === xmlFiles.length) {
+            setPendingBatch(batchList);
+            setPendingXml(batchList[0]?.content || null);
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileUpload(e.dataTransfer.files[0]);
+      handleMultipleFilesUpload(e.dataTransfer.files);
     }
   };
 
@@ -75,19 +107,56 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-      <div className="p-5 sm:p-6 space-y-4">
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+      {/* Header Compacto do Card de Cálculo */}
+      <div className="px-4 py-3 border-b border-slate-100 bg-[#F8FAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-bold text-[#1F2937] tracking-tight flex items-center gap-1.5">
+            <span>Calcular ICMS-ST</span>
+          </h2>
+          <p className="text-[11px] text-slate-500 font-medium">
+            Envie o XML da NF-e para começar
+          </p>
+        </div>
+
+        {/* Alternador de Modo: Arquivo XML vs Chave */}
+        <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-medium self-start sm:self-auto">
+          <button
+            onClick={() => setActiveMode('upload')}
+            className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+              activeMode === 'upload'
+                ? 'bg-white text-[#16A34A] font-bold shadow-2xs'
+                : 'text-slate-600 hover:text-[#1F2937]'
+            }`}
+          >
+            Arquivo XML
+          </button>
+          <button
+            onClick={() => setActiveMode('key')}
+            className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+              activeMode === 'key'
+                ? 'bg-white text-[#16A34A] font-bold shadow-2xs'
+                : 'text-slate-600 hover:text-[#1F2937]'
+            }`}
+          >
+            Chave de Acesso
+          </button>
+        </div>
+      </div>
+
+      <div className="p-3.5 sm:p-4 space-y-3">
         {/* Modo 1: Upload Direto do Arquivo XML */}
         {activeMode === 'upload' && (
           <div>
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               accept=".xml,text/xml"
               className="hidden"
               onChange={(e) => {
                 if (e.target.files && e.target.files.length > 0) {
-                  handleFileUpload(e.target.files[0]);
+                  handleMultipleFilesUpload(e.target.files);
                 }
               }}
             />
@@ -99,46 +168,49 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-8 sm:p-10 text-center cursor-pointer transition-all ${
+              className={`border border-dashed rounded-xl p-3.5 sm:p-4 text-center cursor-pointer transition-all ${
                 dragOver
-                  ? 'border-[#16A34A] bg-[#DCFCE7]/60 scale-[0.99]'
+                  ? 'border-[#16A34A] bg-[#DCFCE7]/60'
                   : 'border-slate-300 hover:border-[#16A34A] bg-[#F8FAFC] hover:bg-slate-50'
               }`}
             >
-              <div className="h-14 w-14 rounded-2xl bg-[#DCFCE7] border border-[#16A34A]/30 flex items-center justify-center text-[#16A34A] mx-auto mb-3">
-                <UploadCloud className="h-7 w-7" />
+              <div className="h-8 w-8 rounded-lg bg-[#DCFCE7] border border-[#16A34A]/30 flex items-center justify-center text-[#16A34A] mx-auto mb-1.5">
+                <UploadCloud className="h-4 w-4" />
               </div>
-              <div className="text-sm font-medium text-[#1F2937] mb-2">
-                {fileName ? (
-                  <div className="space-y-2 max-w-md mx-auto">
-                    <div className="text-[#166534] font-semibold flex items-center justify-center gap-1.5">
-                      <span>✓ Nota Fiscal Selecionada:</span>
-                    </div>
-                    <div className="text-[#166534] font-mono text-xs sm:text-sm bg-[#DCFCE7] border border-[#16A34A]/30 px-3 py-1.5 rounded-xl inline-block max-w-full truncate shadow-xs">
-                      {fileName}
-                    </div>
-                    <div className="text-xs text-slate-500 font-normal">
-                      Clique aqui caso queira enviar outro arquivo XML
-                    </div>
+              
+              {fileName ? (
+                <div className="space-y-1">
+                  <div className="text-xs text-[#166534] font-semibold flex items-center justify-center gap-1">
+                    <span>✓ Arquivo Selecionado:</span>
                   </div>
-                ) : (
-                  'Clique aqui ou arraste o arquivo XML da Nota Fiscal'
-                )}
-              </div>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Envie o XML da NF-e para calcular automaticamente a substituição tributária (ICMS-ST) de autopeças.
-              </p>
+                  <div className="text-xs font-mono font-bold text-[#166534] bg-[#DCFCE7] border border-[#16A34A]/20 px-2.5 py-0.5 rounded-md inline-block max-w-full truncate">
+                    {fileName}
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-normal">
+                    Clique aqui para trocar de arquivo
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  <div className="text-xs font-semibold text-[#1F2937]">
+                    Clique aqui ou arraste o arquivo XML da NF-e
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Formato .xml oficial de NF-e (v4.00)
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Modo 2: Digitar Chave de Acesso / Código */}
+        {/* Modo 2: Digitar Chave de Acesso */}
         {activeMode === 'key' && (
-          <form onSubmit={handleSearchByKey} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#1F2937] flex items-center gap-1.5">
+          <form onSubmit={handleSearchByKey} className="space-y-2.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-[#1F2937] flex items-center gap-1">
                 <KeyRound className="h-3.5 w-3.5 text-[#16A34A]" />
-                Digite ou Cole a Chave de Acesso (44 dígitos) ou Número da NF-e:
+                Digite a Chave de Acesso ou Número da NF-e:
               </label>
               <div className="flex gap-2">
                 <input
@@ -146,46 +218,54 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
                   placeholder="Ex: 3524 1000 1234 5678 0001 5500 1000 0012 3410 0000 0000"
                   value={chaveAcessoInput}
                   onChange={(e) => setChaveAcessoInput(e.target.value)}
-                  className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-mono text-[#1F2937] placeholder-slate-400 focus:outline-none focus:border-[#16A34A]"
+                  className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-[#1F2937] placeholder-slate-400 focus:outline-none focus:border-[#16A34A]"
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-[#16A34A] hover:bg-[#15803d] text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shrink-0 shadow-sm"
+                  className="px-4 py-1.5 bg-[#16A34A] hover:bg-[#15803d] text-white font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 shadow-2xs"
                 >
-                  <Search className="h-4 w-4 text-white" />
-                  <span>Selecionar Nota</span>
+                  <Search className="h-3.5 w-3.5 text-white" />
+                  <span>Selecionar</span>
                 </button>
               </div>
             </div>
             {fileName && (
-              <div className="text-xs text-[#166534] font-mono">
+              <div className="text-xs text-[#166534] font-mono font-bold">
                 Nota selecionada: {fileName}
               </div>
             )}
           </form>
         )}
 
-        {/* Botão de Iniciar Cálculo (Disponível assim que houver XML/Chave carregada) */}
-        {pendingXml && (
-          <div className="pt-2 animate-fade-in">
+        {/* Botão Principal: Calcular ICMS-ST */}
+        {(pendingXml || pendingBatch) && (
+          <div>
             <button
               onClick={() => {
-                if (pendingXml) {
+                if (pendingBatch && pendingBatch.length > 0) {
+                  onStartLoadingGame({ batch: pendingBatch }, modalidadeAutopecas);
+                } else if (pendingXml) {
                   onStartLoadingGame(pendingXml, modalidadeAutopecas);
                 }
               }}
               disabled={isLoading}
-              className="w-full py-4 px-6 rounded-2xl bg-[#16A34A] hover:bg-[#15803d] text-white font-black text-sm tracking-wider uppercase shadow-md shadow-green-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all transform hover:scale-[1.01]"
+              className="w-full h-10 px-4 rounded-lg bg-[#16A34A] hover:bg-[#15803d] focus:outline-none focus:ring-2 focus:ring-[#16A34A] text-white font-bold text-xs sm:text-sm tracking-wide uppercase shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Play className="h-5 w-5 fill-white" />
-              <span>INICIAR CÁLCULO AGORA!</span>
+              <Play className="h-4 w-4 fill-white shrink-0" />
+              <span>
+                {isLoading
+                  ? 'Calculando ICMS-ST...'
+                  : pendingBatch && pendingBatch.length > 1
+                  ? `Calcular Lote em Massa (${pendingBatch.length} NFs)`
+                  : 'Calcular ICMS-ST'}
+              </span>
             </button>
           </div>
         )}
 
         {errorMsg && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
             <span>{errorMsg}</span>
           </div>
         )}

@@ -4,6 +4,7 @@ import { toCanvas } from 'html-to-image';
 export interface GeneratePdfOptions {
   filename?: string;
   orientation?: 'p' | 'portrait' | 'l' | 'landscape';
+  singlePage?: boolean;
 }
 
 /**
@@ -13,7 +14,7 @@ export async function generatePdfFromElement(
   element: HTMLElement,
   options: GeneratePdfOptions = {}
 ): Promise<void> {
-  const { filename = 'relatorio-fiscal.pdf', orientation = 'portrait' } = options;
+  const { filename = 'relatorio-fiscal.pdf', orientation = 'portrait', singlePage = false } = options;
 
   try {
     // Gera o canvas usando html-to-image que lida perfeitamente com Tailwind CSS v4, SVGs e fontes
@@ -43,10 +44,20 @@ export async function generatePdfFromElement(
     const imgWidth = pageWidth;
     const imgHeight = (canvas.height * pageWidth) / canvas.width;
 
-    // Se couber em 1 página
-    if (imgHeight <= pageHeight) {
+    // Se for modo singlePage ou se couber em 1 página
+    if (singlePage || imgHeight <= pageHeight) {
       const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+      if (imgHeight > pageHeight || singlePage) {
+        // Redimensiona proporcionalmente para caber rigorosamente em 1 única folha A4 (sem transbordar)
+        const scale = Math.min(pageWidth / canvas.width, (pageHeight - 4) / canvas.height);
+        const renderWidth = canvas.width * scale;
+        const renderHeight = canvas.height * scale;
+        const xOffset = (pageWidth - renderWidth) / 2;
+        const yOffset = (pageHeight - renderHeight) / 2;
+        pdf.addImage(imgData, 'PNG', xOffset, Math.max(0, yOffset), renderWidth, renderHeight, undefined, 'FAST');
+      } else {
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+      }
     } else {
       // Paginação automática A4 para relatórios longos
       let heightLeft = imgHeight;

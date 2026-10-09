@@ -14,6 +14,8 @@ import { PrintableCalculationSheet } from './components/PrintableCalculationShee
 import { DanfeModal } from './components/DanfeModal';
 import { FiscalBorderoModal } from './components/FiscalBorderoModal';
 import { LoadingGameOverlay } from './components/LoadingGameOverlay';
+import { MassImportModal } from './components/MassImportModal';
+import { BatchSelectorBar, BatchItem } from './components/BatchSelectorBar';
 import { ShoppingCart, Scale, Globe, Printer, FileText, Download, Receipt, Mail, Sparkles } from 'lucide-react';
 
 import { parseNFeXML } from './services/xmlParser';
@@ -31,7 +33,11 @@ export default function App() {
   const [selectedItemMemoria, setSelectedItemMemoria] = useState<ItemAuditoria | null>(null);
   const [modalidadeAutopecas, setModalidadeAutopecas] = useState<ModalidadeMvaAutopecas>('MVA_71_78');
   const [activeTab, setActiveTab] = useState<'BUYER' | 'FISCAL'>('BUYER');
-  const [pendingPayload, setPendingPayload] = useState<{ xml: string; mod: ModalidadeMvaAutopecas } | null>(null);
+  const [pendingPayload, setPendingPayload] = useState<any>(null);
+
+  // Estado para Importação em Massa (Batch)
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('ALL');
 
   // Modais
   const [isDanfeOpen, setIsDanfeOpen] = useState(false);
@@ -41,9 +47,143 @@ export default function App() {
   const [isLegisOpen, setIsLegisOpen] = useState(false);
   const [isAiAuditOpen, setIsAiAuditOpen] = useState(false);
   const [isPrintSheetOpen, setIsPrintSheetOpen] = useState(false);
+  const [isMassImportOpen, setIsMassImportOpen] = useState(false);
   const [printSheetMode, setPrintSheetMode] = useState<'SIMPLIFICADO' | 'ANALITICO'>('SIMPLIFICADO');
 
-  // Auditoria inicia nula para exibir a primeira dobra limpa focada no uploader/hero
+  // Funções para consolidação de lote
+  const createConsolidatedNFeParsed = (items: BatchItem[]): NFeParsed => {
+    const first = items[0].parsed;
+    const totalProd = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vProd || 0), 0);
+    const totalNF = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vNF || 0), 0);
+    const totalST = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vST || 0), 0);
+    const totalBCST = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vBCST || 0), 0);
+    const totalICMS = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vICMS || 0), 0);
+    const totalBC = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vBC || 0), 0);
+
+    return {
+      ...first,
+      nNF: `LOTE (${items.length} NFs)`,
+      serie: 'MASSA',
+      dhEmi: first.dhEmi,
+      dEmiFormatada: `${items.length} Notas Importadas`,
+      emitente: {
+        ...first.emitente,
+        xNome: `Lote Consolidado (${items.length} Fornecedores)`,
+      },
+      destinatario: first.destinatario,
+      totaisXML: {
+        vProd: totalProd,
+        vNF: totalNF,
+        vST: totalST,
+        vBCST: totalBCST,
+        vICMS: totalICMS,
+        vBC: totalBC,
+        vFCP: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vFCP || 0), 0),
+        vFCPST: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vFCPST || 0), 0),
+        vIPI: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vIPI || 0), 0),
+        vFrete: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vFrete || 0), 0),
+        vSeg: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vSeg || 0), 0),
+        vDesc: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vDesc || 0), 0),
+        vOutro: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vOutro || 0), 0),
+      },
+      itens: items.flatMap((i) => i.parsed.itens),
+    };
+  };
+
+  const createConsolidatedAuditoria = (items: BatchItem[]): ResumoAuditoriaNFe => {
+    const first = items[0].audit;
+    const totalARecolher = items.reduce((acc, i) => acc + (i.audit.totalARecolher || 0), 0);
+
+    const allItensAuditados = items.flatMap((b) =>
+      b.audit.itensAuditados.map((it) => ({
+        ...it,
+        item: {
+          ...it.item,
+          xProd: `[NF ${b.audit.nNF}] ${it.item.xProd}`,
+        },
+      }))
+    );
+
+    return {
+      ...first,
+      nNF: `LOTE (${items.length} NFs)`,
+      serie: 'MASSA',
+      chaveAcesso: `LOTE-${items.length}-NOTAS-FISCAIS`,
+      statusGeral: 'CONFIRMADO',
+      totalARecolher,
+      itensAuditados: allItensAuditados,
+      inconsistencias: items.flatMap((i) => i.audit.inconsistencias),
+    };
+  };
+
+  const handleProcessBatchXmls = (
+    filesData: { name: string; content: string }[],
+    novaModalidade: ModalidadeMvaAutopecas = modalidadeAutopecas
+  ) => {
+    try {
+      const items: BatchItem[] = [];
+      filesData.forEach((file) => {
+        try {
+          const parsed = parseNFeXML(file.content);
+          const audit = processarAuditoriaNFe(parsed, 'Revenda', {
+            forcarSTTodos: true,
+            itensCustom: {},
+            modalidadeAutopecas: novaModalidade,
+          });
+          items.push({
+            id: `${parsed.nNF}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            fileName: file.name,
+            xml: file.content,
+            parsed,
+            audit,
+          });
+        } catch (e) {
+          console.error(`Erro ao processar XML ${file.name}:`, e);
+        }
+      });
+
+      if (items.length === 0) {
+        alert('Nenhum arquivo XML válido foi processado no lote.');
+        return;
+      }
+
+      setBatchItems(items);
+      setSelectedBatchId('ALL');
+      setModalidadeAutopecas(novaModalidade);
+
+      if (items.length === 1) {
+        setNfeParsed(items[0].parsed);
+        setAuditoria(items[0].audit);
+        setCurrentXml(items[0].xml);
+      } else {
+        const consolidatedParsed = createConsolidatedNFeParsed(items);
+        const consolidatedAudit = createConsolidatedAuditoria(items);
+        setNfeParsed(consolidatedParsed);
+        setAuditoria(consolidatedAudit);
+        setCurrentXml(items[0].xml);
+      }
+    } catch (err: any) {
+      alert(`Falha na importação em massa: ${err?.message || 'Erro ao processar lote'}`);
+    }
+  };
+
+  const handleSelectBatchId = (id: string) => {
+    setSelectedBatchId(id);
+    if (id === 'ALL' && batchItems.length > 1) {
+      const consolidatedParsed = createConsolidatedNFeParsed(batchItems);
+      const consolidatedAudit = createConsolidatedAuditoria(batchItems);
+      setNfeParsed(consolidatedParsed);
+      setAuditoria(consolidatedAudit);
+      setCurrentXml(batchItems[0].xml);
+    } else {
+      const found = batchItems.find((b) => b.id === id);
+      if (found) {
+        setNfeParsed(found.parsed);
+        setAuditoria(found.audit);
+        setCurrentXml(found.xml);
+      }
+    }
+  };
 
   const handleAnalyzeXml = (
     xmlString: string,
@@ -51,6 +191,9 @@ export default function App() {
     novaModalidade: ModalidadeMvaAutopecas = modalidadeAutopecas
   ) => {
     try {
+      setBatchItems([]);
+      setSelectedBatchId('ALL');
+
       const parsed = parseNFeXML(xmlString);
       setNfeParsed(parsed);
       setCurrentXml(xmlString);
@@ -86,7 +229,13 @@ export default function App() {
         isLoading={isLoading}
         onComplete={() => {
           if (pendingPayload) {
-            handleAnalyzeXml(pendingPayload.xml, 'Revenda', pendingPayload.mod);
+            if (pendingPayload.batch) {
+              handleProcessBatchXmls(pendingPayload.batch, pendingPayload.mod || modalidadeAutopecas);
+            } else if (pendingPayload.xml) {
+              handleAnalyzeXml(pendingPayload.xml, 'Revenda', pendingPayload.mod || modalidadeAutopecas);
+            } else if (typeof pendingPayload === 'string') {
+              handleAnalyzeXml(pendingPayload, 'Revenda', modalidadeAutopecas);
+            }
             setPendingPayload(null);
           }
           setIsLoading(false);
@@ -108,17 +257,19 @@ export default function App() {
         onOpenLegis={() => setIsLegisOpen(true)}
         onOpenAiAudit={() => setIsAiAuditOpen(true)}
         onOpenPrint={() => setIsPrintSheetOpen(true)}
+        onOpenMassImport={() => setIsMassImportOpen(true)}
         onOpenAutopecasGuide={() => setIsStatesMatrixOpen(true)}
         unreadCount={radar.unreadCount}
         countdownFormatted={radar.countdownFormatted}
         isSyncing={radar.isSyncing}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5 no-print">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-3.5 space-y-3.5 no-print">
         {/* 1. Uploader de XML */}
         <section className="no-print">
           <XmlUploader
             onAnalyzeXml={handleAnalyzeXml}
+            onAnalyzeBatchXmls={handleProcessBatchXmls}
             isLoading={isLoading}
             modalidadeAutopecas={modalidadeAutopecas}
             onChangeModalidadeAutopecas={(m) => {
@@ -132,12 +283,31 @@ export default function App() {
                 setAuditoria(auditResult);
               }
             }}
-            onStartLoadingGame={(xml, mod) => {
-              setPendingPayload({ xml, mod });
+            onStartLoadingGame={(payload, mod) => {
+              if (typeof payload === 'object' && payload.batch) {
+                setPendingPayload({ batch: payload.batch, mod });
+              } else {
+                setPendingPayload({ xml: payload, mod });
+              }
               setIsLoading(true);
             }}
+            onOpenMassImportModal={() => setIsMassImportOpen(true)}
           />
         </section>
+
+        {/* Barra de Seleção e Controle do Lote em Massa (Exibida se houver 2 ou mais NFs no lote) */}
+        {batchItems.length > 1 && (
+          <BatchSelectorBar
+            batchItems={batchItems}
+            selectedBatchId={selectedBatchId}
+            onSelectBatchId={handleSelectBatchId}
+            onOpenMassImportModal={() => setIsMassImportOpen(true)}
+            onClearBatch={() => {
+              setBatchItems([]);
+              setSelectedBatchId('ALL');
+            }}
+          />
+        )}
 
         {auditoria && nfeParsed && (
           <div id="audit-results-section" className="space-y-5 pt-2">
@@ -407,6 +577,18 @@ export default function App() {
         auditoria={auditoria}
         nfeParsed={nfeParsed}
         initialMode={printSheetMode}
+      />
+
+      {/* Modal: Importação em Massa de Múltiplos XMLs */}
+      <MassImportModal
+        isOpen={isMassImportOpen}
+        onClose={() => setIsMassImportOpen(false)}
+        modalidadeAutopecas={modalidadeAutopecas}
+        isLoading={isLoading}
+        onProcessBatchXmls={(filesData, mod) => {
+          setIsLoading(true);
+          setPendingPayload({ batch: filesData, mod });
+        }}
       />
     </div>
   );

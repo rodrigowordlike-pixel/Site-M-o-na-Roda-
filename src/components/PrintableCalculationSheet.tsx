@@ -75,9 +75,11 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
       setIsGeneratingPdf(true);
       const filename = `Relatorio-ICMS-ST-NFe-${auditoria.nNF}-${mode.toLowerCase()}.pdf`;
       const orientation = mode === 'ANALITICO' ? 'landscape' : 'portrait';
+      const singlePage = mode === 'SIMPLIFICADO';
       await generatePdfFromElement(docElement, {
         filename,
         orientation,
+        singlePage,
       });
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
@@ -219,20 +221,20 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
         {/* ========================================================================= */}
         {/* CORPO DO DOCUMENTO A4 (Estrutura Fiel à Imagem Anexada pelo Usuário)      */}
         {/* ========================================================================= */}
-        <div id="printable-document-a4-content" className={`printable-document-a4 p-4 sm:p-6 bg-white text-black font-sans text-[9px] space-y-2 ${mode === 'ANALITICO' ? 'landscape-document' : ''}`}>
+        <div id="printable-document-a4-content" className={`printable-document-a4 ${mode === 'SIMPLIFICADO' ? 'p-3 sm:p-4 space-y-1.5' : 'p-4 sm:p-6 space-y-2'} bg-white text-black font-sans text-[9px] ${mode === 'ANALITICO' ? 'landscape-document' : ''}`}>
           
           {/* 1. Cabeçalho do Relatório (Idêntico ao Anexo) */}
-          <div className="border-b-2 border-black pb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 avoid-break">
+          <div className="border-b-2 border-black pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-1 avoid-break">
             <div>
-              <div className="text-[8px] font-bold text-gray-800 uppercase tracking-wider">
+              <div className="text-[7.5px] font-bold text-gray-800 uppercase tracking-wider">
                 SISTEMA ESPECIALISTA EM AUTOPEÇAS · CONVÊNIO ICMS 142/2018
               </div>
-              <h1 className="text-xs sm:text-base font-black tracking-tight uppercase text-black">
+              <h1 className="text-xs sm:text-sm font-black tracking-tight uppercase text-black">
                 RELATÓRIO DE CÁLCULO DE ICMS-ST — ANEXO DA NOTA FISCAL
               </h1>
-              <p className="text-[7.5px] text-gray-600 font-medium">
+              <p className="text-[7px] text-gray-600 font-medium">
                 {mode === 'SIMPLIFICADO'
-                  ? 'Demonstrativo Sintético Consolidado para Auditoria de Compras e Homologação da Guia'
+                  ? 'Demonstrativo Sintético Consolidado para Auditoria de Compras e Homologação da Guia (1 Folha)'
                   : 'Demonstrativo Detalhado Item a Item para Auditoria de Compras e Conferência de Entrada'}
               </p>
             </div>
@@ -240,33 +242,33 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
               <div className="text-xs sm:text-sm font-black text-black">
                 NF-e Nº {auditoria.nNF} · SÉRIE {auditoria.serie}
               </div>
-              <div className="text-[8px] text-gray-700">
+              <div className="text-[7.5px] text-gray-700">
                 Emissão: <strong>{auditoria.dataEmissao}</strong>
               </div>
             </div>
           </div>
 
           {/* 2. Dados dos Participantes (Fornecedor / Destinatário) */}
-          <div className="grid grid-cols-2 gap-2 border border-gray-400 p-2 rounded bg-gray-50 text-[8.5px] avoid-break">
+          <div className="grid grid-cols-2 gap-2 border border-gray-400 p-1.5 rounded bg-gray-50 text-[8px] avoid-break">
             <div className="min-w-0">
-              <span className="font-bold block text-gray-900 uppercase text-[7.5px]">FORNECEDOR / EMITENTE ({auditoria.ufOrigem}):</span>
-              <div className="font-bold text-black uppercase">{nfeParsed.emitente.xNome}</div>
-              <div className="font-mono text-gray-700 text-[7.5px]">
+              <span className="font-bold block text-gray-900 uppercase text-[7px]">FORNECEDOR / EMITENTE ({auditoria.ufOrigem}):</span>
+              <div className="font-bold text-black uppercase truncate">{nfeParsed.emitente.xNome}</div>
+              <div className="font-mono text-gray-700 text-[7px] truncate">
                 CNPJ: {nfeParsed.emitente.cnpj} · Regime: {nfeParsed.emitente.crtDescricao}
               </div>
             </div>
             <div className="min-w-0">
-              <span className="font-bold block text-gray-900 uppercase text-[7.5px]">DESTINATÁRIO / COMPRADOR ({auditoria.ufDestino}):</span>
-              <div className="font-bold text-black uppercase">{nfeParsed.destinatario.xNome}</div>
-              <div className="font-mono text-gray-700 text-[7.5px]">
+              <span className="font-bold block text-gray-900 uppercase text-[7px]">DESTINATÁRIO / COMPRADOR ({auditoria.ufDestino}):</span>
+              <div className="font-bold text-black uppercase truncate">{nfeParsed.destinatario.xNome}</div>
+              <div className="font-mono text-gray-700 text-[7px] truncate">
                 CNPJ: {nfeParsed.destinatario.cnpj} · Alíquota Interna PR: <strong>19,50%</strong>
               </div>
             </div>
           </div>
 
           {/* 3. RESUMO FINANCEIRO CONSOLIDADO DA OPERAÇÃO (Os 5 Cards com Destaque Âmbar) */}
-          <div className="border border-black p-2 rounded bg-white space-y-1 avoid-break">
-            <div className="font-bold uppercase tracking-wider text-[8px] border-b border-black pb-0.5 flex justify-between items-center">
+          <div className="border border-black p-1.5 rounded bg-white space-y-1 avoid-break">
+            <div className="font-bold uppercase tracking-wider text-[7.5px] border-b border-black pb-0.5 flex justify-between items-center">
               <span>RESUMO FINANCEIRO CONSOLIDADO DA OPERAÇÃO</span>
               <span className="font-mono text-[7px] text-gray-700 whitespace-nowrap">
                 {itensImportados.length} IMP (104,86%) · {itensNacionais.length} NAC (87,78%)
@@ -305,15 +307,15 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
           {/* MODO 1: SIMPLIFICADO (SINTÉTICO EM 1 PÁGINA A4)                          */}
           {/* ========================================================================= */}
           {mode === 'SIMPLIFICADO' && (
-            <div className="space-y-2 pt-1 avoid-break">
+            <div className="space-y-1.5 pt-0.5 avoid-break">
               {/* Tabela Sintética por Alíquota & MVA */}
               <div className="space-y-0.5">
-                <div className="font-bold uppercase text-[8px] border-b border-black pb-0.5 flex justify-between">
+                <div className="font-bold uppercase text-[7.5px] border-b border-black pb-0.5 flex justify-between">
                   <span>COMPOSIÇÃO FISCAL POR ORIGEM & MVA (QUADRO SINTÉTICO)</span>
-                  <span className="font-mono text-gray-600 text-[7.5px]">{auditoria.itensAuditados.length} ITENS TOTAIS</span>
+                  <span className="font-mono text-gray-600 text-[7px]">{auditoria.itensAuditados.length} ITENS TOTAIS</span>
                 </div>
 
-                <table className="w-full text-left text-[8px] border-collapse border border-gray-400 table-fixed">
+                <table className="w-full text-left text-[7.5px] border-collapse border border-gray-400 table-fixed">
                   <colgroup>
                     <col style={{ width: '28%' }} />
                     <col style={{ width: '6%' }} />
@@ -322,80 +324,80 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
                     <col style={{ width: '22%' }} />
                     <col style={{ width: '22%' }} />
                   </colgroup>
-                  <thead className="bg-gray-200 text-black font-bold uppercase text-[7px]">
+                  <thead className="bg-gray-200 text-black font-bold uppercase text-[6.5px]">
                     <tr className="border-b border-gray-400">
-                      <th className="py-1 px-1.5 border-r border-gray-400 truncate">Grupo de Mercadorias</th>
-                      <th className="py-1 px-1 border-r border-gray-400 text-center whitespace-nowrap">Qtd</th>
-                      <th className="py-1 px-1 border-r border-gray-400 text-center whitespace-nowrap">Alíq.</th>
-                      <th className="py-1 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">MVA</th>
-                      <th className="py-1 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">Base Cálculo ST</th>
-                      <th className="py-1 px-1.5 text-right font-black whitespace-nowrap">ICMS-ST a Pagar</th>
+                      <th className="py-0.5 px-1.5 border-r border-gray-400 truncate">Grupo de Mercadorias</th>
+                      <th className="py-0.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">Qtd</th>
+                      <th className="py-0.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">Alíq.</th>
+                      <th className="py-0.5 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">MVA</th>
+                      <th className="py-0.5 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">Base Cálculo ST</th>
+                      <th className="py-0.5 px-1.5 text-right font-black whitespace-nowrap">ICMS-ST a Pagar</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-300 font-mono text-[8px]">
+                  <tbody className="divide-y divide-gray-300 font-mono text-[7.5px]">
                     <tr className="hover:bg-gray-50">
-                      <td className="py-1 px-1.5 border-r border-gray-300 font-sans font-bold text-[7.5px]">
+                      <td className="py-0.5 px-1.5 border-r border-gray-300 font-sans font-bold text-[7px]">
                         Peças Nacionais (Origem 0, 4, 5)
                       </td>
-                      <td className="py-1 px-1 border-r border-gray-300 text-center whitespace-nowrap">{itensNacionais.length}</td>
-                      <td className="py-1 px-1 border-r border-gray-300 text-center whitespace-nowrap">12%</td>
-                      <td className="py-1 px-1.5 border-r border-gray-300 text-right font-bold whitespace-nowrap">87,78%</td>
-                      <td className="py-1 px-1.5 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(baseSTNacionais)}</td>
-                      <td className="py-1 px-1.5 text-right font-black whitespace-nowrap">{formatBRL(stNacionais)}</td>
+                      <td className="py-0.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">{itensNacionais.length}</td>
+                      <td className="py-0.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">12%</td>
+                      <td className="py-0.5 px-1.5 border-r border-gray-300 text-right font-bold whitespace-nowrap">87,78%</td>
+                      <td className="py-0.5 px-1.5 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(baseSTNacionais)}</td>
+                      <td className="py-0.5 px-1.5 text-right font-black whitespace-nowrap">{formatBRL(stNacionais)}</td>
                     </tr>
                     <tr className="hover:bg-gray-50">
-                      <td className="py-1 px-1.5 border-r border-gray-300 font-sans font-bold text-[7.5px]">
+                      <td className="py-0.5 px-1.5 border-r border-gray-300 font-sans font-bold text-[7px]">
                         Peças Importadas (Origem 1, 2, 3, 8)
                       </td>
-                      <td className="py-1 px-1 border-r border-gray-300 text-center whitespace-nowrap">{itensImportados.length}</td>
-                      <td className="py-1 px-1 border-r border-gray-300 text-center whitespace-nowrap">4%</td>
-                      <td className="py-1 px-1.5 border-r border-gray-300 text-right font-bold whitespace-nowrap">104,86%</td>
-                      <td className="py-1 px-1.5 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(baseSTImportados)}</td>
-                      <td className="py-1 px-1.5 text-right font-black whitespace-nowrap">{formatBRL(stImportados)}</td>
+                      <td className="py-0.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">{itensImportados.length}</td>
+                      <td className="py-0.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">4%</td>
+                      <td className="py-0.5 px-1.5 border-r border-gray-300 text-right font-bold whitespace-nowrap">104,86%</td>
+                      <td className="py-0.5 px-1.5 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(baseSTImportados)}</td>
+                      <td className="py-0.5 px-1.5 text-right font-black whitespace-nowrap">{formatBRL(stImportados)}</td>
                     </tr>
                   </tbody>
-                  <tfoot className="bg-gray-100 font-bold border-t-2 border-black font-mono text-[8px]">
+                  <tfoot className="bg-gray-100 font-bold border-t-2 border-black font-mono text-[7.5px]">
                     <tr>
-                      <td className="py-1 px-1.5 border-r border-gray-400 uppercase font-sans text-[7.5px]">TOTAL CONSOLIDADO:</td>
-                      <td className="py-1 px-1 border-r border-gray-400 text-center whitespace-nowrap">{auditoria.itensAuditados.length}</td>
-                      <td className="py-1 px-1 border-r border-gray-400 text-center whitespace-nowrap">—</td>
-                      <td className="py-1 px-1.5 border-r border-gray-400 text-center whitespace-nowrap">—</td>
-                      <td className="py-1 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">{formatBRL(totalBaseST)}</td>
-                      <td className="py-1 px-1.5 text-right font-black bg-amber-100 whitespace-nowrap">{formatBRL(totalSTRecolher)}</td>
+                      <td className="py-0.5 px-1.5 border-r border-gray-400 uppercase font-sans text-[7px]">TOTAL CONSOLIDADO:</td>
+                      <td className="py-0.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">{auditoria.itensAuditados.length}</td>
+                      <td className="py-0.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">—</td>
+                      <td className="py-0.5 px-1.5 border-r border-gray-400 text-center whitespace-nowrap">—</td>
+                      <td className="py-0.5 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">{formatBRL(totalBaseST)}</td>
+                      <td className="py-0.5 px-1.5 text-right font-black bg-amber-100 whitespace-nowrap">{formatBRL(totalSTRecolher)}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
               {/* Informações para Homologação e Pagamento da Guia */}
-              <div className="border border-gray-400 p-2 rounded bg-gray-50 text-[8px] space-y-1">
-                <div className="font-bold text-gray-900 uppercase text-[7.5px] border-b border-gray-300 pb-0.5">
+              <div className="border border-gray-400 p-1.5 rounded bg-gray-50 text-[7.5px] space-y-1">
+                <div className="font-bold text-gray-900 uppercase text-[7px] border-b border-gray-300 pb-0.5">
                   DADOS PARA PAGAMENTO DA GUIA (SETOR FINANCEIRO / FISCAL):
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 font-mono text-[7.5px]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 font-mono text-[7px]">
                   <div className="min-w-0 bg-white p-1 rounded border border-gray-300">
-                    <span className="text-gray-600 block font-sans text-[6.5px]">ESTADO FAVORECIDO:</span>
+                    <span className="text-gray-600 block font-sans text-[6px]">ESTADO FAVORECIDO:</span>
                     <strong className="text-black block truncate">PARANÁ (SEFAZ/PR)</strong>
                   </div>
                   <div className="min-w-0 bg-white p-1 rounded border border-gray-300">
-                    <span className="text-gray-600 block font-sans text-[6.5px]">CÓDIGO DE RECEITA:</span>
+                    <span className="text-gray-600 block font-sans text-[6px]">CÓDIGO DE RECEITA:</span>
                     <strong className="block whitespace-nowrap">10009-9 (ICMS-ST)</strong>
                   </div>
                   <div className="min-w-0 bg-white p-1 rounded border border-gray-300">
-                    <span className="text-gray-600 block font-sans text-[6.5px]">ALÍQUOTA INTERNA PR:</span>
+                    <span className="text-gray-600 block font-sans text-[6px]">ALÍQUOTA INTERNA PR:</span>
                     <strong className="block whitespace-nowrap">19,50% (Lei 21.850)</strong>
                   </div>
                   <div className="min-w-0 bg-white p-1 rounded border border-gray-300">
-                    <span className="text-gray-600 block font-sans text-[6.5px]">TOTAL DA NOTA FISCAL:</span>
+                    <span className="text-gray-600 block font-sans text-[6px]">TOTAL DA NOTA FISCAL:</span>
                     <strong className="block whitespace-nowrap">{formatBRL(nfeParsed.totaisXML.vNF)}</strong>
                   </div>
                   <div className="min-w-0 bg-white p-1 rounded border border-gray-300">
-                    <span className="text-gray-600 block font-sans text-[6.5px]">TOTAL CRÉDITO PRÓPRIO:</span>
+                    <span className="text-gray-600 block font-sans text-[6px]">TOTAL CRÉDITO PRÓPRIO:</span>
                     <strong className="block whitespace-nowrap">{formatBRL(totalCreditoProprio)}</strong>
                   </div>
                   <div className="min-w-0 bg-amber-50 p-1 rounded border border-amber-400">
-                    <span className="text-gray-600 block font-sans text-[6.5px] text-amber-900 font-bold">TOTAL GUIA A RECOLHER:</span>
-                    <strong className="text-black font-black text-[8.5px] block whitespace-nowrap">
+                    <span className="text-gray-600 block font-sans text-[6px] text-amber-900 font-bold">TOTAL GUIA A RECOLHER:</span>
+                    <strong className="text-black font-black text-[8px] block whitespace-nowrap">
                       {formatBRL(totalSTRecolher)}
                     </strong>
                   </div>
@@ -403,7 +405,7 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
               </div>
 
               {/* Base Legal */}
-              <div className="border border-gray-300 p-1.5 rounded bg-white text-[7.5px] space-y-0.5">
+              <div className="border border-gray-300 p-1 rounded bg-white text-[7px] space-y-0.5">
                 <div className="font-bold text-gray-900 uppercase">Regras Tributárias Oficiais:</div>
                 <div className="font-mono text-gray-700 leading-tight">
                   • <strong>Convênio ICMS 142/2018 & Protocolo ICMS 41/2008</strong>: MVA Original de 71,78% ajustada conforme alíquota interestadual e interna de 19,50% do Paraná.<br />
@@ -412,13 +414,13 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
               </div>
 
               {/* Campos de Assinatura */}
-              <div className="pt-3 border-t border-gray-400 grid grid-cols-2 gap-8 text-[8px] text-center font-sans">
+              <div className="pt-1.5 border-t border-gray-400 grid grid-cols-2 gap-6 text-[7.5px] text-center font-sans">
                 <div>
-                  <div className="border-b border-black pb-5 mb-0.5"></div>
+                  <div className="border-b border-black pb-2.5 mb-0.5"></div>
                   <span className="font-bold text-gray-800">Conferência Comprador / Recebimento da NF-e</span>
                 </div>
                 <div>
-                  <div className="border-b border-black pb-5 mb-0.5"></div>
+                  <div className="border-b border-black pb-2.5 mb-0.5"></div>
                   <span className="font-bold text-gray-800">Setor Fiscal / Liberação Financeira para Pagamento da Guia</span>
                 </div>
               </div>

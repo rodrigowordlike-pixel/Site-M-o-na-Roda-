@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, ShieldCheck, ArrowRight, Loader2, X } from 'lucide-react';
+import { MaoNaRodaLogo } from './MaoNaRodaLogo';
 
 interface LoadingGameOverlayProps {
   isLoading: boolean;
@@ -51,11 +52,12 @@ export const LoadingGameOverlay: React.FC<LoadingGameOverlayProps> = ({ isLoadin
           </button>
         )}
 
-        <div className="h-16 w-16 mx-auto rounded-2xl bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center shadow-xs border border-[#16A34A]/30">
-          {progress < 100 ? (
-            <Loader2 className="h-8 w-8 animate-spin text-[#16A34A]" />
-          ) : (
-            <CheckCircle2 className="h-8 w-8 text-[#16A34A]" />
+        <div className="relative mx-auto flex items-center justify-center">
+          <MaoNaRodaLogo className="h-16 w-16 shadow-lg" />
+          {progress < 100 && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl backdrop-blur-[1px]">
+              <Loader2 className="h-8 w-8 animate-spin text-white drop-shadow-md" />
+            </div>
           )}
         </div>
 

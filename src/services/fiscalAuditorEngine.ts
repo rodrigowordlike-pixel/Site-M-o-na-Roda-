@@ -138,14 +138,16 @@ export function auditarItem(
 
   // A. Identificação de Isenção / Não Incidência / Imunidade / Suspensão de ICMS-ST
   const ehIsentoOuNaoTributado =
-    ['40', '41', '50'].includes(cstClean) ||
-    ['300', '400'].includes(csosnClean);
+    (['40', '41', '50'].includes(cstClean) ||
+    ['300', '400'].includes(csosnClean)) &&
+    customOverrides?.forcarST !== true;
 
   // B. Identificação de ST Já Cobrado Anteriormente (Substituído)
   const ehSubstituidoAnteriormente =
-    ['60'].includes(cstClean) ||
+    (['60'].includes(cstClean) ||
     ['500'].includes(csosnClean) ||
-    ['5405', '6405'].includes(cfopClean);
+    ['5405', '6405'].includes(cfopClean)) &&
+    customOverrides?.forcarST !== true;
 
   // C. Identificação de ST Retida pelo Remetente nesta Operação
   const temSTDestacadaNoXML = item.vICMSST > 0 || item.vBCST > 0;
@@ -158,7 +160,8 @@ export function auditarItem(
     !ehInterestadual &&
     !temSTDestacadaNoXML &&
     !['10', '30', '70'].includes(cstClean) &&
-    !['201', '202', '203'].includes(csosnClean);
+    !['201', '202', '203'].includes(csosnClean) &&
+    customOverrides?.forcarST !== true;
 
   // E. Identificação de NCM Não Sujeito à ST (Fora do Âmbito do ICMS-ST pelo NCM / CEST)
   const NcmForaDaST =

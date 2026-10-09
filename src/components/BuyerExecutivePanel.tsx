@@ -58,9 +58,14 @@ export const BuyerExecutivePanel: React.FC<BuyerExecutivePanelProps> = ({
   };
 
   const valorProdutos = nfeParsed.totaisXML?.vProd || 0;
-  const valorST = auditoria.totalARecolher || 0;
+  const valorST =
+    auditoria.totalARecolher && auditoria.totalARecolher > 0
+      ? auditoria.totalARecolher
+      : nfeParsed.totaisXML?.vST && nfeParsed.totaisXML?.vST > 0
+      ? nfeParsed.totaisXML.vST
+      : auditoria.icmsSTaRecolher || 0;
   const valorTotalNota = nfeParsed.totaisXML?.vNF || 0;
-  const custoTotalCompra = valorTotalNota + valorST;
+  const custoTotalCompra = valorTotalNota + (auditoria.totalARecolher || 0);
   const percentualImpactoST = valorProdutos > 0 ? (valorST / valorProdutos) * 100 : 0;
 
   // Estatísticas de Itens
@@ -148,6 +153,21 @@ export const BuyerExecutivePanel: React.FC<BuyerExecutivePanelProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Banner Informativo quando o Fornecedor não reteve ST no XML mas a ST é devida na Entrada */}
+      {nfeParsed.totaisXML?.vST === 0 && valorST > 0 && (
+        <div className="mt-4 p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 text-xs text-amber-900">
+          <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold block text-amber-950 text-xs">
+              ⚡ NOTA FISCAL EMITIDA SEM RETENÇÃO DE ST NA ORIGEM (vICMSST = R$ 0,00 NO XML)
+            </span>
+            <span>
+              O fornecedor <strong>{nfeParsed.emitente.xNome}</strong> ({nfeParsed.emitente.uf}) emitiu a nota fiscal com ST destacada em R$ 0,00 no XML. A ferramenta Mão na Roda calculou automaticamente a <strong>ST de Antecipação Tributária na Entrada ({formatBRL(valorST)})</strong> devida para recolhimento pelo destinatário no {nfeParsed.destinatario.uf}.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Grid de Métricas Financeiras Principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-6">

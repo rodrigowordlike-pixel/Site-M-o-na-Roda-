@@ -101,6 +101,21 @@ export const FiscalHomologationView: React.FC<FiscalHomologationViewProps> = ({
           </div>
         </div>
 
+        {/* Banner Informativo quando vST = 0 no XML */}
+        {nfeParsed.totaisXML?.vST === 0 && totalSTLiquido > 0 && (
+          <div className="mt-4 p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 text-xs text-amber-900">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block text-amber-950 text-xs">
+                ⚡ NOTA EMITIDA PELO FORNECEDOR SEM RETENÇÃO NA ORIGEM (vICMSST = R$ 0,00 NO XML)
+              </span>
+              <span>
+                O fornecedor <strong>{nfeParsed.emitente.xNome}</strong> ({nfeParsed.emitente.uf}) não reteve a ST no XML. A ferramenta efetuou o cálculo da <strong>Antecipação Tributária do ICMS-ST na Entrada ({formatBRL(totalSTLiquido)})</strong> a ser recolhida via guia (GNRE/DARE) no estado de destino ({nfeParsed.destinatario.uf}).
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Informações da Guia de Recolhimento */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-5">
           <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-4">

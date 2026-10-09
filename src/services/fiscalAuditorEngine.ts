@@ -120,7 +120,6 @@ export function auditarItem(
   // Pesquisa enquadramento no Convênio 142/2018
   const enquadramentoST = pesquisarConvenio142(item.ncm, item.cest);
   const temIndicadorXML = detectarIndicadoresSTnoXML(item);
-  const forcarSTManual = customOverrides?.forcarST;
   const ehAutopecas =
     enquadramentoST?.segmentoCodigo === '01' ||
     ['8708', '8409', '8483', '8511', '8512', '8539', '8714', '4016', '7320', '8413', '8414', '8421', '8507', '8536', '9031'].some(
@@ -128,52 +127,46 @@ export function auditarItem(
     ) ||
     (item.cest || '').startsWith('01');
 
-  // Alíquota interna do Estado de destino (padrão Paraná 19,5% conforme Lei Estadual nº 21.850/2023)
+  // Alíquota interna do Estado de destino
   const aliqIntraModal = ufDestino === 'PR' || !dadosDestino ? 19.5 : dadosDestino.aliquotaInternaModal;
+  const aliqFCP = 0.0; // Autopeças sem incidência de FCP (0%)
 
-  // FCP: Autopeças NÃO possui incidência de FCP (0%)
-  const aliqFCP = 0.0;
+  // Códigos fiscais limpos
+  const cstClean = (item.cst || '').replace(/\D/g, '').slice(-2);
+  const csosnClean = (item.csosn || '').replace(/\D/g, '');
+  const cfopClean = (item.cfop || '').replace(/\D/g, '');
 
-  // No sistema de autopeças, todas as mercadorias da operação destinadas à revenda estão sujeitas a ST
-  const temSTnoDestino = true;
-  const segmentoNome = '01 - Autopeças (Protocolo ICMS 41/2008 & Convênio 142/2018)';
+  // A. Identificação de Isenção / Não Incidência / Imunidade / Suspensão de ICMS-ST
+  const ehIsentoOuNaoTributado =
+    ['40', '41', '50'].includes(cstClean) ||
+    ['300', '400'].includes(csosnClean);
 
-  // Operação interestadual de autopeças com destino ao PR é amparada pelo Protocolo ICMS 41/2008
-  const temAcordo = true;
-  const nomeAcordo = 'Protocolo ICMS 41/2008';
+  // B. Identificação de ST Já Cobrado Anteriormente (Substituído)
+  const ehSubstituidoAnteriormente =
+    ['60'].includes(cstClean) ||
+    ['500'].includes(csosnClean) ||
+    ['5405', '6405'].includes(cfopClean);
 
-  // 1. Determinação da Classificação (A, B, C, D, E)
-  let classificacao: ClassificacaoST = 'C';
-  let classificacaoDescricao = 'C — ST devida pelo destinatário: Responsabilidade solidária / antecipação na entrada do Estado (Protocolo ICMS 41/2008 e Lei 21.850/PR)';
-  let statusCalculo: StatusCalculo = 'CONFIRMADO';
-  let motivoNaoConfirmado: string | undefined = undefined;
-  let responsavel: 'DESTINATARIO' | 'REMETENTE' | 'NAO_APLICAVEL' | 'INCERTO' = 'DESTINATARIO';
+  // C. Identificação de ST Retida pelo Remetente nesta Operação
+  const temSTDestacadaNoXML = item.vICMSST > 0 || item.vBCST > 0;
+  const ehSTRetidaPeloRemetente =
+    (temSTDestacadaNoXML || ['10', '30', '70'].includes(cstClean) || ['201', '202', '203'].includes(csosnClean)) &&
+    item.vICMSST > 0;
 
-  if (!item.ncm || item.ncm.length < 4) {
-    classificacao = 'C';
-    classificacaoDescricao = 'C — ST devida pelo destinatário: NCM genérico de autopeças aplicado (Protocolo ICMS 41/2008)';
-    statusCalculo = 'CONFIRMADO';
-    responsavel = 'DESTINATARIO';
-  } else if (item.vICMSST > 0) {
-    classificacao = 'B';
-    classificacaoDescricao = `B — ST retida / calculada na operação (Protocolo ICMS 41/2008)`;
-    responsavel = 'DESTINATARIO';
-  } else {
-    classificacao = 'C';
-    classificacaoDescricao = `C — ST devida pelo destinatário: Antecipação na entrada do Paraná com MVA ajustada (Protocolo ICMS 41/2008 e Lei 21.850/PR)`;
-    responsavel = 'DESTINATARIO';
-  }
+  // D. Identificação de Operação Interna sem ST
+  const ehOperacaoInternaSemST =
+    !ehInterestadual &&
+    !temSTDestacadaNoXML &&
+    !['10', '30', '70'].includes(cstClean) &&
+    !['201', '202', '203'].includes(csosnClean);
 
-  // 2. Determinação da MVA Original e MVA Ajustada
-  let mvaOriginal = 71.78; // Padrão de autopeças
-
+  // 1. Determinação da MVA Original e MVA Ajustada
+  let mvaOriginal = 71.78;
   if (customOverrides?.mvaManual && customOverrides.mvaManual > 0) {
     mvaOriginal = customOverrides.mvaManual;
   } else if (ehAutopecas) {
-    // Para autopeças, usa a modalidade escolhida (71.78% vs 40.00%) ou o que constar no XML
     mvaOriginal = modalidadeAutopecas === 'MVA_71_78' ? 71.78 : 40.0;
     if (item.pMVAST && item.pMVAST > 0) {
-      // Se o XML já traz a MVA Original informada (ex: 71.78 ou 40.0)
       mvaOriginal = item.pMVAST;
     }
   } else if (item.pMVAST && item.pMVAST > 0) {
@@ -192,9 +185,8 @@ export function auditarItem(
     if (emitenteSimples) {
       mvaAjustada = mvaOriginal;
       houveAjusteMVA = false;
-      motivoAjusteMVA = `Vedado o ajuste de MVA nas operações com remetente optante pelo Simples Nacional (Convênio ICMS 35/2011 e Cláusula décima primeira, § 1º do Convênio 142/2018). Aplica-se MVA Original de ${mvaOriginal.toFixed(2)}%.`;
+      motivoAjusteMVA = `Vedado o ajuste de MVA nas operações com remetente optante pelo Simples Nacional (Convênio ICMS 35/2011). Aplica-se MVA Original de ${mvaOriginal.toFixed(2)}%.`;
     } else {
-      // Emitente Regime Normal: Fórmula da MVA Ajustada
       const aliqInterDecimal = aliqInter / 100;
       const aliqIntraDecimal = (aliqIntraModal + aliqFCP) / 100;
 
@@ -206,7 +198,7 @@ export function auditarItem(
         houveAjusteMVA = true;
 
         const ehImportado = ['1', '2', '3', '8'].includes(item.origem);
-        motivoAjusteMVA = `Fórmula do Convênio 142/2018 (${ehImportado ? 'Importado 4%' : `Nacional ${aliqInter}%`}): [(1 + ${mvaOriginal.toFixed(2)}%) × (1 - ${aliqInter}%) ÷ (1 - ${(aliqIntraModal + aliqFCP).toFixed(1)}%)] - 1 = ${mvaAjustada.toFixed(2)}%`;
+        motivoAjusteMVA = `Fórmula do Convênio 142/2018 (${ehImportado ? 'Importado 4%' : `Nacional ${aliqInter}%`}): [(1 + ${mvaOriginal.toFixed(2)}%) × (1 - ${aliqInter}%) ÷ (1 - ${aliqIntraModal.toFixed(1)}%)] - 1 = ${mvaAjustada.toFixed(2)}%`;
       } else {
         motivoAjusteMVA = 'Alíquota interna menor ou igual à interestadual. MVA não ajustada.';
       }
@@ -215,46 +207,39 @@ export function auditarItem(
 
   const mvaAplicada = houveAjusteMVA ? mvaAjustada : mvaOriginal;
 
-  // 3. Tratamento do IPI na Base do ICMS-ST
+  // 2. Tratamento do IPI na Base do ICMS-ST
   const ipiValor = item.vIPI || 0;
   let ipiIntegraBaseST = true;
-  let motivoTratamentoIPI = 'IPI integra a base de cálculo da ST conforme Art. 8º, II da Lei Complementar nº 87/1996 (revenda / comerciante de autopeças).';
+  let motivoTratamentoIPI = 'IPI integra a base de cálculo da ST conforme Art. 8º, II da Lei Complementar nº 87/1996.';
 
   if (finalidade === 'Industrializacao' && destinatarioContribuinte) {
     ipiIntegraBaseST = false;
     motivoTratamentoIPI = 'Operação de insumo para industrialização entre contribuintes do IPI: IPI não integra a base conforme Art. 13, § 2º da LC 87/96.';
   }
 
-  // 4. Base de Cálculo da ST
+  // 3. Base de Cálculo e Impostos Teóricos da ST
   const somaBaseOperacao =
     item.vProd - item.vDesc + item.vFrete + item.vSeg + item.vOutro + (ipiIntegraBaseST ? ipiValor : 0);
-  const baseST = round2(somaBaseOperacao * (1 + mvaAplicada / 100));
+  const baseSTCalculada = round2(somaBaseOperacao * (1 + mvaAplicada / 100));
 
-  // 5. Crédito de ICMS Próprio (Dedução)
+  // Dedução do ICMS Próprio
   let icmsProprioDeduzivel = 0;
   let motivoIcmsProprio = '';
 
   if (emitenteSimples) {
     const basePropria = item.vProd - item.vDesc + item.vFrete + item.vSeg + item.vOutro;
     icmsProprioDeduzivel = round2(basePropria * (aliqInter / 100));
-    motivoIcmsProprio = `Remetente do Simples Nacional: Dedução do ICMS da operação própria pela alíquota interestadual (${aliqInter}%) sobre R$ ${basePropria.toFixed(2)} = R$ ${icmsProprioDeduzivel.toFixed(2)} (Cláusula décima terceira do Convênio 142/2018).`;
+    motivoIcmsProprio = `Remetente do Simples Nacional: Dedução do ICMS da operação própria pela alíquota interestadual (${aliqInter}%) = R$ ${icmsProprioDeduzivel.toFixed(2)}.`;
   } else {
     icmsProprioDeduzivel =
       item.vICMS > 0 ? item.vICMS : round2((item.vBC > 0 ? item.vBC : somaBaseOperacao) * (aliqInter / 100));
     motivoIcmsProprio = `Dedução do ICMS da operação própria (${aliqInter}% = R$ ${icmsProprioDeduzivel.toFixed(2)}).`;
   }
 
-  // 6. Débito Bruto de ST e ICMS-ST Líquido
-  const debitoSTBruto = round2(baseST * (aliqIntraModal / 100));
+  const debitoSTBruto = round2(baseSTCalculada * (aliqIntraModal / 100));
   const icmsSTCalculado = round2(Math.max(0, debitoSTBruto - icmsProprioDeduzivel));
 
-  // 7. FCP-ST
-  let fcpSTCalculado = 0;
-  if (aliqFCP > 0 && temSTnoDestino) {
-    fcpSTCalculado = round2(baseST * (aliqFCP / 100));
-  }
-
-  // 8. DIFAL
+  // Cálculo de DIFAL para Uso/Consumo ou Ativo
   let difalDevido = 0;
   if (ehInterestadual && (finalidade === 'UsoConsumo' || finalidade === 'AtivoImobilizado')) {
     if (dadosDestino.calculoDIFAL === 'BASE_DUPLA') {
@@ -270,39 +255,123 @@ export function auditarItem(
     }
   }
 
-  // Atribuição de valores da ST apurada para o comprador / adquirente
-  let valorFinalSTRecolher = icmsSTCalculado > 0 ? icmsSTCalculado : (item.vICMSST > 0 ? item.vICMSST : 0);
-  let valorFinalFCPRecolher = fcpSTCalculado;
-  let valorFinalDIFALRecolher = difalDevido;
+  // 4. Classificação e Apuração do Valor Real a Recolher pelo Adquirente
+  let classificacao: ClassificacaoST = 'C';
+  let classificacaoDescricao = '';
+  let statusCalculo: StatusCalculo = 'CONFIRMADO';
+  let responsavel: 'DESTINATARIO' | 'REMETENTE' | 'NAO_APLICAVEL' | 'INCERTO' = 'DESTINATARIO';
+  let baseSTRinal = 0;
+  let valorFinalSTRecolher = 0;
+  let valorFinalFCPRecolher = 0;
+  let valorFinalDIFALRecolher = 0;
   let ipiDevidoDestinatario = 0;
 
-  if (finalidade === 'UsoConsumo' || finalidade === 'AtivoImobilizado') {
+  const passoAPasso: string[] = [];
+
+  if (ehIsentoOuNaoTributado) {
+    // CASO 1: Item Isento / Não Tributado de ST
+    classificacao = 'A';
+    classificacaoDescricao = `A — Item Isento / Não Tributado de ICMS/ST (CST/CSOSN ${item.cst || item.csosn}). Operação desonerada de ICMS-ST.`;
+    responsavel = 'NAO_APLICAVEL';
+    baseSTRinal = 0;
     valorFinalSTRecolher = 0;
-    valorFinalFCPRecolher = 0;
+
+    passoAPasso.push(
+      `1. Operação: ${ufOrigem} ➔ ${ufDestino}. Código Fiscal CST/CSOSN informado: ${item.cst || item.csosn}.`,
+      `2. Isenção / Não Incidência: O código CST/CSOSN ${item.cst || item.csosn} indica operação isenta, não tributada ou suspensa de ICMS e ICMS-ST.`,
+      `3. Resultado: Valor a recolher de ICMS-ST pelo adquirente = R$ 0,00.`
+    );
+  } else if (ehSubstituidoAnteriormente) {
+    // CASO 2: ST Cobrado Anteriormente (Substituído - CST 60 / CSOSN 500 / CFOP 5405/6405)
+    classificacao = 'A';
+    classificacaoDescricao = `A — ICMS-ST cobrado anteriormente na cadeia (CST/CSOSN ${item.cst || item.csosn || '60'} / CFOP ${cfopClean}). Adquirente desonerado de novo recolhimento.`;
+    responsavel = 'NAO_APLICAVEL';
+    baseSTRinal = item.vBCST > 0 ? item.vBCST : 0;
+    valorFinalSTRecolher = 0;
+
+    passoAPasso.push(
+      `1. Operação: ${ufOrigem} ➔ ${ufDestino}. CST/CSOSN: ${item.cst || item.csosn || '60'} | CFOP: ${item.cfop}.`,
+      `2. Regime de Substituído: O ICMS-ST já foi recolhido anteriormente pelo fabricante ou distribuidor nas etapas prévias da cadeia fiscal.`,
+      `3. Desoneração: O adquirente nesta operação com estabelecimento substituído está ISENTO de novo recolhimento de ST na entrada.`,
+      `4. Resultado: Valor a recolher de ICMS-ST no destino = R$ 0,00.`
+    );
+  } else if (finalidade === 'UsoConsumo' || finalidade === 'AtivoImobilizado') {
+    // CASO 3: Destinação Uso/Consumo ou Ativo (Inaplicabilidade de ST de Revenda, Incidência de DIFAL)
+    classificacao = 'A';
+    classificacaoDescricao = `A — Operação para ${finalidade === 'UsoConsumo' ? 'Uso e Consumo' : 'Ativo Imobilizado'}: Não incide ICMS-ST de revenda. Devido DIFAL em op. interestadual.`;
+    responsavel = 'DESTINATARIO';
+    baseSTRinal = 0;
+    valorFinalSTRecolher = 0;
+    valorFinalDIFALRecolher = difalDevido;
+
+    passoAPasso.push(
+      `1. Operação: ${ufOrigem} ➔ ${ufDestino} destinada a ${finalidade === 'UsoConsumo' ? 'Uso/Consumo' : 'Ativo Imobilizado'}.`,
+      `2. Não incidência de ST de Revenda: Operações para uso próprio não geram retenção de MVA para saídas subsequentes.`,
+      `3. Apuração de DIFAL: ${dadosDestino.calculoDIFAL === 'BASE_DUPLA' ? 'Base Dupla' : 'Simples'} = R$ ${difalDevido.toFixed(2)}.`,
+      `4. Resultado a recolher pelo adquirente: R$ ${difalDevido.toFixed(2)} (DIFAL).`
+    );
+  } else if (finalidade === 'Industrializacao') {
+    // CASO 4: Insumo para Industrialização
+    classificacao = 'A';
+    classificacaoDescricao = `A — Insumo para Industrialização: Operação desonerada do regime de Substituição Tributária.`;
+    responsavel = 'NAO_APLICAVEL';
+    baseSTRinal = 0;
+    valorFinalSTRecolher = 0;
+
+    passoAPasso.push(
+      `1. Operação: Entradas de insumos para industrialização entre contribuintes do ICMS.`,
+      `2. Desoneração de ST: Conforme regramento do ICMS, insumos industriais não sofrem retenção de ST de revenda.`,
+      `3. Resultado: Valor a recolher de ICMS-ST = R$ 0,00.`
+    );
+  } else if (ehSTRetidaPeloRemetente) {
+    // CASO 5: ST Retida e Faturada na Origem pelo Remetente (CST 10, 30, 70 / CSOSN 201, 202, 203 com vICMSST > 0)
+    classificacao = 'B';
+    classificacaoDescricao = `B — ST retida/faturada na operação pelo remetente (R$ ${item.vICMSST.toFixed(2)}). Adquirente paga na fatura do fornecedor.`;
+    responsavel = 'REMETENTE';
+    baseSTRinal = item.vBCST > 0 ? item.vBCST : baseSTCalculada;
+    valorFinalSTRecolher = 0; // Já faturado na nota, não gera guia de antecipação extra na entrada
+
+    passoAPasso.push(
+      `1. Operação: ${ufOrigem} ➔ ${ufDestino}. ST retida pelo fornecedor no XML: R$ ${item.vICMSST.toFixed(2)}.`,
+      `2. Faturamento na Nota: O ICMS-ST foi calculado pelo remetente e destacado no campo vICMSST da NF-e.`,
+      `3. Quitação via Fatura: O valor já compõe o total da nota cobrado no boleto/fatura pelo fornecedor.`,
+      `4. Guia de Antecipação na Entrada: R$ 0,00 (Desonerado de pagamento duplicado na entrada).`
+    );
+  } else if (ehOperacaoInternaSemST) {
+    // CASO 6: Operação Interna (mesma UF) sem ST
+    classificacao = 'A';
+    classificacaoDescricao = `A — Operação interna (${ufOrigem}) tributada sob regime normal (CST/CSOSN ${item.cst || item.csosn}). Não sujeita a antecipação de ST.`;
+    responsavel = 'NAO_APLICAVEL';
+    baseSTRinal = 0;
+    valorFinalSTRecolher = 0;
+
+    passoAPasso.push(
+      `1. Operação Interna: Compra dentro do próprio Estado (${ufOrigem}).`,
+      `2. Regime Normal: Fornecedor emitiu sob regime comum de tributação sem destaque de ST.`,
+      `3. Resultado: Operação sem antecipação de ST na entrada. Valor a recolher = R$ 0,00.`
+    );
+  } else {
+    // CASO 7: Operação Interestadual Sujeita a Antecipação do ICMS-ST pelo Destinatário (Classificação C)
+    classificacao = 'C';
+    classificacaoDescricao = `C — ST devida pelo destinatário: Antecipação na entrada do ${ufDestino} com MVA ajustada (Protocolo ICMS 41/2008).`;
+    responsavel = 'DESTINATARIO';
+    baseSTRinal = baseSTCalculada;
+    valorFinalSTRecolher = icmsSTCalculado;
+
+    passoAPasso.push(
+      `1. Operação: ${ufOrigem} ➔ ${ufDestino} (Interestadual). Alíquota interestadual aplicável: ${aliqInter}% (${['1', '2', '3', '8'].includes(item.origem) ? 'Importado - Res. Senado 13/12' : 'Nacional'}).`,
+      `2. Regime do Emitente: ${nfe.emitente.crtDescricao}. Alíquota interna do destino (${ufDestino}): ${aliqIntraModal}%.`,
+      `3. Segmento: Autopeças (Protocolo ICMS 41/2008 & Convênio 142/2018). MVA Original = ${mvaOriginal.toFixed(2)}%. ${motivoAjusteMVA}`,
+      `4. Base de ST: (R$ ${item.vProd.toFixed(2)} [prod] - R$ ${item.vDesc.toFixed(2)} [desc] + R$ ${item.vFrete.toFixed(2)} [frete] + R$ ${item.vOutro.toFixed(2)} [outras] + R$ ${ipiIntegraBaseST ? ipiValor.toFixed(2) : '0,00'} [IPI]) × (1 + ${mvaAplicada.toFixed(2)}%) = R$ ${baseSTRinal.toFixed(2)}.`,
+      `5. Débito Bruto de ICMS: R$ ${baseSTRinal.toFixed(2)} × ${aliqIntraModal}% = R$ ${debitoSTBruto.toFixed(2)}.`,
+      `6. Dedução do ICMS Próprio: R$ ${debitoSTBruto.toFixed(2)} - R$ ${icmsProprioDeduzivel.toFixed(2)} = ICMS-ST a Recolher de R$ ${icmsSTCalculado.toFixed(2)}.`,
+      `7. Responsabilidade Fiscal: Antecipação na entrada do Estado de destino pelo adquirente.`
+    );
   }
 
   const totalItemRecolher = round2(
     valorFinalSTRecolher + valorFinalFCPRecolher + valorFinalDIFALRecolher + ipiDevidoDestinatario
   );
-
-  const passoAPasso: string[] = [
-    `1. Operação: ${ufOrigem} ➔ ${ufDestino} (${ehInterestadual ? 'Interestadual' : 'Interna'}). Alíquota interestadual aplicável: ${aliqInter}% (${['1', '2', '3', '8'].includes(item.origem) ? 'Importado - Res. Senado 13/12' : 'Nacional'}).`,
-    `2. Regime do Emitente: ${nfe.emitente.crtDescricao}. Alíquota interna do destino (${ufDestino}): ${aliqIntraModal}%${aliqFCP > 0 ? ` + ${aliqFCP}% FCP` : ''}.`,
-    `3. Segmento: ${segmentoNome}. MVA Original = ${mvaOriginal.toFixed(2)}%. ${motivoAjusteMVA}`,
-    `4. Base de ST: (R$ ${item.vProd.toFixed(2)} [prod] - R$ ${item.vDesc.toFixed(2)} [desc] + R$ ${item.vFrete.toFixed(2)} [frete] + R$ ${item.vOutro.toFixed(2)} [outras] + R$ ${ipiIntegraBaseST ? ipiValor.toFixed(2) : '0,00'} [IPI]) × (1 + ${mvaAplicada.toFixed(2)}%) = R$ ${baseST.toFixed(2)}.`,
-    `5. Débito Bruto de ICMS: R$ ${baseST.toFixed(2)} × ${aliqIntraModal}% = R$ ${debitoSTBruto.toFixed(2)}.`,
-    `6. Dedução do ICMS Próprio: R$ ${debitoSTBruto.toFixed(2)} - R$ ${icmsProprioDeduzivel.toFixed(2)} = ICMS-ST de R$ ${icmsSTCalculado.toFixed(2)}.`,
-  ];
-
-  if (aliqFCP > 0 && temSTnoDestino) {
-    passoAPasso.push(`7. FCP-ST Segregado: R$ ${baseST.toFixed(2)} × ${aliqFCP}% = R$ ${fcpSTCalculado.toFixed(2)}.`);
-  }
-
-  if (difalDevido > 0) {
-    passoAPasso.push(`8. DIFAL Destinatário (${dadosDestino.calculoDIFAL}): R$ ${difalDevido.toFixed(2)}.`);
-  }
-
-  passoAPasso.push(`9. Responsabilidade Fiscal: ${classificacaoDescricao}. Valor a recolher pelo adquirente: R$ ${totalItemRecolher.toFixed(2)}.`);
 
   const memoriaCalculo: MemoriaCalculoItem = {
     valorProdutos: item.vProd,
@@ -322,13 +391,13 @@ export function auditarItem(
     mvaAplicada,
     houveAjusteMVA,
     motivoAjusteMVA,
-    baseST,
+    baseST: baseSTRinal,
     aliquotaInternaDestino: aliqIntraModal,
     aliquotaFCP: aliqFCP,
     debitoSTBruto,
-    icmsSTDevido: icmsSTCalculado,
-    fcpSTDevido: fcpSTCalculado,
-    difalDevido,
+    icmsSTDevido: valorFinalSTRecolher,
+    fcpSTDevido: valorFinalFCPRecolher,
+    difalDevido: valorFinalDIFALRecolher,
     ipiDevidoDestinatario,
     totalItemRecolher,
     passoAPasso,
@@ -338,7 +407,7 @@ export function auditarItem(
     ufOrigem,
     ufDestino,
     finalidade === 'UsoConsumo' || finalidade === 'AtivoImobilizado' ? 'DIFAL' : 'ICMS_ST',
-    nomeAcordo
+    'Protocolo ICMS 41/2008'
   );
 
   return {
@@ -346,12 +415,11 @@ export function auditarItem(
     classificacao,
     classificacaoDescricao,
     statusCalculo,
-    motivoNaoConfirmado,
     responsavelRecolhimento: responsavel,
-    regimeSTDestino: temSTnoDestino,
-    temAcordoInterestadual: temAcordo,
-    nomeAcordoInterestadual: nomeAcordo,
-    baseST: baseST,
+    regimeSTDestino: true,
+    temAcordoInterestadual: true,
+    nomeAcordoInterestadual: 'Protocolo ICMS 41/2008',
+    baseST: baseSTRinal,
     mva: mvaAplicada,
     icmsST: valorFinalSTRecolher,
     fcpST: valorFinalFCPRecolher,
@@ -456,7 +524,7 @@ function executarSegundoCalculo(itensAuditados: ItemAuditoria[]): {
     let fcpST2 = 0;
     let difal2 = 0;
 
-    if (auditado.classificacao === 'C' || auditado.classificacao === 'D' || auditado.classificacao === 'B') {
+    if (auditado.classificacao === 'C' || auditado.classificacao === 'D') {
       const valorBruto =
         item.vProd - item.vDesc + item.vFrete + item.vSeg + item.vOutro + (mem.ipiIntegraBaseST ? item.vIPI || 0 : 0);
       const mvaFator = 1 + mem.mvaAplicada / 100;
@@ -468,6 +536,9 @@ function executarSegundoCalculo(itensAuditados: ItemAuditoria[]): {
       if (mem.aliquotaFCP > 0) {
         fcpST2 = round2(baseST2 * (mem.aliquotaFCP / 100));
       }
+    } else {
+      baseST2 = auditado.baseST;
+      icmsST2 = auditado.icmsST;
     }
 
     difal2 = auditado.difal;

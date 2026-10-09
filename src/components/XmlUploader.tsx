@@ -32,8 +32,8 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
   const [activeMode, setActiveMode] = useState<'upload' | 'key'>('upload');
   const [chaveAcessoInput, setChaveAcessoInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
-  const [fileName, setFileName] = useState<string | null>('NF-e Exemplo Padrão (Autopeças).xml');
-  const [pendingXml, setPendingXml] = useState<string | null>(SAMPLE_NFES[0].xml);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [pendingXml, setPendingXml] = useState<string | null>(null);
   const [pendingBatch, setPendingBatch] = useState<{ name: string; content: string }[] | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -238,30 +238,28 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
         )}
 
         {/* Botão Principal: Calcular ICMS-ST */}
-        {(pendingXml || pendingBatch) && (
-          <div>
-            <button
-              onClick={() => {
-                if (pendingBatch && pendingBatch.length > 0) {
-                  onStartLoadingGame({ batch: pendingBatch }, modalidadeAutopecas);
-                } else if (pendingXml) {
-                  onStartLoadingGame(pendingXml, modalidadeAutopecas);
-                }
-              }}
-              disabled={isLoading}
-              className="w-full h-10 px-4 rounded-lg bg-[#16A34A] hover:bg-[#15803d] focus:outline-none focus:ring-2 focus:ring-[#16A34A] text-white font-bold text-xs sm:text-sm tracking-wide uppercase shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Play className="h-4 w-4 fill-white shrink-0" />
-              <span>
-                {isLoading
-                  ? 'Calculando ICMS-ST...'
-                  : pendingBatch && pendingBatch.length > 1
-                  ? `Calcular Lote em Massa (${pendingBatch.length} NFs)`
-                  : 'Calcular ICMS-ST'}
-              </span>
-            </button>
-          </div>
-        )}
+        <div>
+          <button
+            onClick={() => {
+              if (pendingBatch && pendingBatch.length > 0) {
+                onStartLoadingGame({ batch: pendingBatch }, modalidadeAutopecas);
+              } else if (pendingXml) {
+                onStartLoadingGame(pendingXml, modalidadeAutopecas);
+              }
+            }}
+            disabled={isLoading || (!pendingXml && !pendingBatch)}
+            className="w-full h-10 px-4 rounded-lg bg-[#16A34A] hover:bg-[#15803d] focus:outline-none focus:ring-2 focus:ring-[#16A34A] text-white font-bold text-xs sm:text-sm tracking-wide uppercase shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Play className="h-4 w-4 fill-white shrink-0" />
+            <span>
+              {isLoading
+                ? 'Calculando ICMS-ST...'
+                : pendingBatch && pendingBatch.length > 1
+                ? `Calcular Lote em Massa (${pendingBatch.length} NFs)`
+                : 'Calcular ICMS-ST'}
+            </span>
+          </button>
+        </div>
 
         {errorMsg && (
           <div className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg">

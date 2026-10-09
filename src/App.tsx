@@ -26,7 +26,7 @@ import { useFiscalRadar } from './hooks/useFiscalRadar';
 
 export default function App() {
   const radar = useFiscalRadar();
-  const [currentXml, setCurrentXml] = useState<string>(SAMPLE_NFES[0].xml);
+  const [currentXml, setCurrentXml] = useState<string>('');
   const [nfeParsed, setNfeParsed] = useState<NFeParsed | null>(null);
   const [auditoria, setAuditoria] = useState<ResumoAuditoriaNFe | null>(null);
   const [isLoading, setIsLoading] = useState(false);

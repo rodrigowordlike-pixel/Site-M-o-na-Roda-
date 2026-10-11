@@ -155,10 +155,18 @@ export function useFiscalRadar() {
   });
 
   const alteracoesFinais = somenteAnoAtual ? alteracoesAnoAtual : alteracoes;
-  const unreadCount = alteracoesFinais.filter((a) => !readIds.includes(a.id)).length;
+  
+  // Ordena por data e pega os 10 principais
+  const alteracoesTop10 = [...alteracoesFinais].sort((a, b) => {
+      const dateA = new Date(a.dataPublicacao.split('/').reverse().join('-')).getTime();
+      const dateB = new Date(b.dataPublicacao.split('/').reverse().join('-')).getTime();
+      return dateB - dateA;
+  }).slice(0, 10);
+
+  const unreadCount = alteracoesTop10.filter((a) => !readIds.includes(a.id)).length;
 
   return {
-    alteracoes: alteracoesFinais,
+    alteracoes: alteracoesTop10,
     totalAnoAtual: alteracoesAnoAtual.length,
     currentYear,
     somenteAnoAtual,

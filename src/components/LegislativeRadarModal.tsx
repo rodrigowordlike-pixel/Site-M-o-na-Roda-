@@ -106,7 +106,7 @@ export const LegislativeRadarModal: React.FC<LegislativeRadarModalProps> = ({
               <div>
                 <div className="flex items-center flex-wrap gap-2">
                   <h3 className="text-base sm:text-lg font-black text-[#1F2937] tracking-tight">
-                    CAIXA DE MENSAGENS · RADAR FISCAL
+                    CAIXA DE MENSAGENS · INFORMAÇÕES FISCAIS
                   </h3>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#DCFCE7] text-[#166534] border border-[#16A34A]/30 font-mono">
                     ANO ATUAL {currentYear}: {alteracoesFiltradas.length} {alteracoesFiltradas.length === 1 ? 'MUDANÇA' : 'MUDANÇAS'}

@@ -39,8 +39,8 @@ export const MassImportModal: React.FC<MassImportModalProps> = ({
     }
 
     // Performance protection: limit file count and total size
-    const MAX_FILES = 20;
-    const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB
+    const MAX_FILES = 1000;
+    const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB
 
     if (selectedFiles.length + validXmlFiles.length > MAX_FILES) {
       setErrorMsg(`Limite de ${MAX_FILES} arquivos excedido. Por favor, envie menos arquivos.`);

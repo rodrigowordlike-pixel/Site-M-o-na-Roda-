@@ -69,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenRadar}
               className="h-8 relative flex items-center gap-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-[#1F2937] border border-slate-200 transition-all font-semibold cursor-pointer shadow-2xs active:scale-[0.98] group"
-              title={`Caixa de Mensagens do Radar Fiscal • Próxima atualização em ${countdownFormatted || '2 horas'}`}
+              title={`Caixa de Mensagens de Informações Fiscais • Próxima atualização em ${countdownFormatted || '2 horas'}`}
             >
               <div className="relative shrink-0">
                 <Mail className="h-3.5 w-3.5 text-[#16A34A]" />
@@ -79,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 )}
               </div>
-              <span>Radar Fiscal</span>
+              <span>Informações Fiscais</span>
               {countdownFormatted && (
                 <span className="text-[10px] text-slate-400 font-mono hidden xl:inline">
                   ({countdownFormatted})

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Mail, Sparkles, Printer, RefreshCw, Files } from 'lucide-react';
+import { Globe, Mail, Sparkles, Printer, RefreshCw, Files, FileSpreadsheet } from 'lucide-react';
 import { MaoNaRodaLogo } from './MaoNaRodaLogo';
 import { ResumoAuditoriaNFe } from '../types/fiscal';
 
@@ -10,6 +10,7 @@ interface HeaderProps {
   onOpenAiAudit?: () => void;
   onOpenPrint?: () => void;
   onOpenMassImport?: () => void;
+  onOpenProductExport?: () => void;
   onOpenAutopecasGuide?: () => void;
   unreadCount?: number;
   countdownFormatted?: string;
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAiAudit,
   onOpenPrint,
   onOpenMassImport,
+  onOpenProductExport,
   onOpenAutopecasGuide,
   unreadCount = 0,
   countdownFormatted,
@@ -84,6 +86,18 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               )}
             </button>
+
+            {onOpenProductExport && (
+              <button
+                type="button"
+                onClick={onOpenProductExport}
+                className="h-8 flex items-center gap-1.5 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-all font-semibold cursor-pointer shadow-2xs active:scale-[0.98]"
+                title="Exportador Inteligente de Produtos de NF-e para Cadastro (Excel .xlsx - Padrão 8 Colunas)"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5 text-[#16A34A] shrink-0" />
+                <span>Exportar Produtos (.xlsx)</span>
+              </button>
+            )}
 
             {onOpenMassImport && (
               <button

@@ -19,6 +19,93 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'Auditor Fiscal Universal de NF-e', timestamp: new Date().toISOString() });
 });
 
+// Decodificação e consulta oficial de dados da Chave de Acesso (44 dígitos)
+app.get('/api/consultar-chave/:chave', async (req, res) => {
+  try {
+    const rawKey = req.params.chave || '';
+    const chave = rawKey.replace(/\D/g, '').trim();
+
+    if (chave.length !== 44) {
+      return res.status(400).json({
+        error: `Chave de acesso incompleta (${chave.length} dígitos). A chave oficial da NF-e deve ter exatamente 44 dígitos.`
+      });
+    }
+
+    const ufCodigo = chave.substring(0, 2);
+    const anoStr = chave.substring(2, 4);
+    const mesStr = chave.substring(4, 6);
+    const cnpjRaw = chave.substring(6, 20);
+    const modelo = chave.substring(20, 22);
+    const serieRaw = chave.substring(22, 25);
+    const nNFRaw = chave.substring(25, 34);
+    const tpEmisRaw = chave.substring(34, 35);
+    const cNFRaw = chave.substring(35, 43);
+    const dvRaw = chave.substring(43, 44);
+
+    // Calcular Dígito Verificador (Módulo 11 pesos 2 a 9)
+    let soma = 0;
+    let peso = 2;
+    for (let i = 42; i >= 0; i--) {
+      soma += parseInt(chave[i], 10) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    const resto = soma % 11;
+    const dvCalculado = (resto === 0 || resto === 1) ? 0 : 11 - resto;
+    const dvValido = dvRaw === dvCalculado.toString();
+
+    // Consultar dados oficiais da empresa emitente (BrasilAPI)
+    let empresaInfo: any = null;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
+      const cnpjResponse = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjRaw}`, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'AuditorFiscalNFe/1.0 (Linux; Node)',
+          'Accept': 'application/json'
+        }
+      });
+      clearTimeout(timeoutId);
+      if (cnpjResponse.ok) {
+        const dados = await cnpjResponse.json();
+        empresaInfo = {
+          razaoSocial: dados.razao_social || '',
+          nomeFantasia: dados.nome_fantasia || dados.razao_social || '',
+          municipio: dados.municipio || '',
+          uf: dados.uf || '',
+          situacaoCadastral: dados.descricao_situacao_cadastral || 'ATIVA',
+          cnaePrincipal: dados.cnae_fiscal_descricao || '',
+          cnaesSecundarios: (dados.cnaes_secundarios || []).slice(0, 3).map((c: any) => c.descricao),
+          regimeTributario: dados.opcao_pelo_simples ? 'Simples Nacional' : 'Regime Normal (Lucro Presumido / Real)',
+          logradouro: `${dados.descricao_tipo_de_logradouro || ''} ${dados.logradouro || ''}, ${dados.numero || ''}`.trim()
+        };
+      }
+    } catch (e) {
+      console.warn('Erro ao consultar BrasilAPI para CNPJ:', cnpjRaw, e);
+    }
+
+    return res.json({
+      chave,
+      valida: dvValido,
+      ufCodigo,
+      anoMes: `${mesStr}/20${anoStr}`,
+      ano: `20${anoStr}`,
+      mes: mesStr,
+      cnpj: cnpjRaw,
+      modelo,
+      serie: parseInt(serieRaw, 10).toString(),
+      numeroNF: parseInt(nNFRaw, 10).toString(),
+      tipoEmissao: tpEmisRaw,
+      codigoNumerico: cNFRaw,
+      dv: dvRaw,
+      dvValido,
+      empresa: empresaInfo
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message || 'Erro ao processar chave de acesso.' });
+  }
+});
+
 // AI Fiscal Audit route (server-side proxy)
 app.post('/api/ai-fiscal-audit', async (req, res) => {
   try {
@@ -31,7 +118,14 @@ app.post('/api/ai-fiscal-audit', async (req, res) => {
       });
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
 
     const prompt = `
 Você é o AUDITOR FISCAL UNIVERSAL DE NF-E BRASILEIRO.
@@ -66,7 +160,7 @@ INSTRUÇÕES ESTRITAS:
 `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
         systemInstruction: 'Você é um Auditor Fiscal Tributário especialista em ICMS, ICMS-ST, DIFAL e IPI em todas as 27 UFs do Brasil. Rigor absoluto, sem alucinações, com citação de legislação oficial e alertas claros.',
@@ -77,7 +171,7 @@ INSTRUÇÕES ESTRITAS:
     return res.json({
       analysis: response.text,
       auditedAt: new Date().toISOString(),
-      modelUsed: 'gemini-2.5-flash'
+      modelUsed: 'gemini-3.8-flash'
     });
   } catch (error: any) {
     console.error('Fiscal AI Audit Error:', error);

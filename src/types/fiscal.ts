@@ -27,7 +27,7 @@ export interface EmitenteNFe {
   uf: UF;
   cMun?: string;
   xMun?: string;
-  crt: '1' | '2' | '3'; // 1 = Simples Nacional, 2 = Simples Nacional - excesso, 3 = Regime Normal
+  crt: '1' | '2' | '3' | '4'; // 1 = Simples Nacional, 2 = Simples Nacional - excesso, 3 = Regime Normal, 4 = MEI
   crtDescricao: string;
 }
 
@@ -49,6 +49,8 @@ export interface ItemNFe {
   xProd: string;
   ncm: string;
   cest?: string;
+  cEAN?: string;
+  cEANTrib?: string;
   cfop: string;
   uCom: string;
   qCom: number;

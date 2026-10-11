@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, UploadCloud, Files, FileText, CheckCircle2, Trash2, AlertCircle, Play, Layers } from 'lucide-react';
+import { X, UploadCloud, Files, FileText, Trash2, AlertCircle, Play, Layers } from 'lucide-react';
 import { ModalidadeMvaAutopecas } from '../types/fiscal';
 
 interface MassImportModalProps {
@@ -23,44 +23,57 @@ export const MassImportModal: React.FC<MassImportModalProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<{ id: string; name: string; content: string }[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   if (!isOpen) return null;
 
-  const handleFilesAdded = (filesList: FileList | File[]) => {
-    const validXmlFiles: File[] = [];
-    Array.from(filesList).forEach((file) => {
-      if (file.name.endsWith('.xml') || file.type === 'text/xml') {
-        validXmlFiles.push(file);
-      }
-    });
+  const handleFilesAdded = async (filesList: FileList | File[]) => {
+    const allFiles = Array.from(filesList);
+    const validXmlFiles = allFiles.filter(
+      (file) => file.name.toLowerCase().endsWith('.xml') || file.type === 'text/xml'
+    );
 
     if (validXmlFiles.length === 0) {
       setErrorMsg('Nenhum arquivo .xml válido foi encontrado na seleção.');
       return;
     }
 
+    // Performance protection: limit file count and total size
+    const MAX_FILES = 20;
+    const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB
+
+    if (selectedFiles.length + validXmlFiles.length > MAX_FILES) {
+      setErrorMsg(`Limite de ${MAX_FILES} arquivos excedido. Por favor, envie menos arquivos.`);
+      return;
+    }
+
+    // Quick size check (optional: might be slightly inaccurate but good enough)
+    const totalSize = validXmlFiles.reduce((acc, file) => acc + file.size, 0);
+    if (totalSize > MAX_TOTAL_SIZE) {
+      setErrorMsg('Tamanho total dos arquivos excede o limite de 50MB para processamento seguro.');
+      return;
+    }
+
     setErrorMsg(null);
-    let loadedCount = 0;
     const newItems: { id: string; name: string; content: string }[] = [];
 
-    validXmlFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
+    for (let i = 0; i < validXmlFiles.length; i++) {
+      const file = validXmlFiles[i];
+      try {
+        const content = await file.text();
         newItems.push({
           id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           name: file.name,
           content,
         });
-        loadedCount++;
+      } catch (err) {
+        console.error(`Erro ao ler arquivo XML ${file.name}:`, err);
+      }
+    }
 
-        if (loadedCount === validXmlFiles.length) {
-          setSelectedFiles((prev) => [...prev, ...newItems]);
-        }
-      };
-      reader.readAsText(file);
-    });
+    if (newItems.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...newItems]);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -121,44 +134,42 @@ export const MassImportModal: React.FC<MassImportModalProps> = ({
 
         {/* Corpo do Modal */}
         <div className="p-5 space-y-4 text-xs text-slate-700">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".xml,text/xml"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files && e.target.files.length > 0) {
-                handleFilesAdded(e.target.files);
-              }
-            }}
-          />
+          {/* Área de Drop de Múltiplos Arquivos XML */}
 
-          {/* Área de Drop de Múltiplos Arquivos */}
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-              dragOver
-                ? 'border-[#16A34A] bg-[#DCFCE7]/60'
-                : 'border-slate-300 hover:border-[#16A34A] bg-[#F8FAFC] hover:bg-slate-50'
-            }`}
-          >
-            <div className="h-10 w-10 rounded-xl bg-[#DCFCE7] border border-[#16A34A]/30 flex items-center justify-center text-[#16A34A] mx-auto mb-2">
-              <UploadCloud className="h-5 w-5" />
+            <div className="relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all border-slate-300 hover:border-[#16A34A] bg-[#F8FAFC] hover:bg-slate-50">
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className="relative"
+              >
+                <div className="h-10 w-10 rounded-xl bg-[#DCFCE7] border border-[#16A34A]/30 flex items-center justify-center text-[#16A34A] mx-auto mb-2 shadow-2xs">
+                  <UploadCloud className="h-5 w-5" />
+                </div>
+                <div className="text-sm font-bold text-[#1F2937] mb-1">
+                  Clique aqui ou arraste múltiplos arquivos <span className="text-[#16A34A]">.XML</span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Você pode selecionar vários arquivos de uma só vez (segure Ctrl ou Shift na seleção)
+                </p>
+              </div>
+              <input
+                id="batch-xml-upload-input"
+                type="file"
+                multiple
+                accept=".xml,text/xml,application/xml"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleFilesAdded(e.target.files);
+                  }
+                  e.target.value = '';
+                }}
+              />
             </div>
-            <div className="text-sm font-bold text-[#1F2937] mb-1">
-              Clique aqui ou arraste seus arquivos XML para esta área
-            </div>
-            <p className="text-xs text-slate-500">
-              Você pode selecionar <strong>quantos XMLs quiser</strong> de uma única vez (sem limite de quantidade).
-            </p>
-          </div>
 
           {/* Lista de Arquivos Selecionados */}
           {selectedFiles.length > 0 && (

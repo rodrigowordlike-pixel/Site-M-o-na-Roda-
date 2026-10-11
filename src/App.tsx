@@ -15,8 +15,9 @@ import { DanfeModal } from './components/DanfeModal';
 import { FiscalBorderoModal } from './components/FiscalBorderoModal';
 import { LoadingGameOverlay } from './components/LoadingGameOverlay';
 import { MassImportModal } from './components/MassImportModal';
+import { NFeProductExportModal } from './components/NFeProductExportModal';
 import { BatchSelectorBar, BatchItem } from './components/BatchSelectorBar';
-import { ShoppingCart, Scale, Globe, Printer, FileText, Download, Receipt, Mail, Sparkles } from 'lucide-react';
+import { ShoppingCart, Scale, Globe, Printer, FileText, Download, Receipt, Mail, Sparkles, FileSpreadsheet } from 'lucide-react';
 
 import { parseNFeXML } from './services/xmlParser';
 import { processarAuditoriaNFe } from './services/fiscalAuditorEngine';
@@ -48,28 +49,30 @@ export default function App() {
   const [isAiAuditOpen, setIsAiAuditOpen] = useState(false);
   const [isPrintSheetOpen, setIsPrintSheetOpen] = useState(false);
   const [isMassImportOpen, setIsMassImportOpen] = useState(false);
+  const [isProductExportOpen, setIsProductExportOpen] = useState(false);
   const [printSheetMode, setPrintSheetMode] = useState<'SIMPLIFICADO' | 'ANALITICO'>('SIMPLIFICADO');
 
   // Funções para consolidação de lote
   const createConsolidatedNFeParsed = (items: BatchItem[]): NFeParsed => {
-    const first = items[0].parsed;
-    const totalProd = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vProd || 0), 0);
-    const totalNF = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vNF || 0), 0);
-    const totalST = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vST || 0), 0);
-    const totalBCST = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vBCST || 0), 0);
-    const totalICMS = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vICMS || 0), 0);
-    const totalBC = items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vBC || 0), 0);
+    const first = items[0]?.parsed;
+    if (!first) throw new Error('Nenhum item válido no lote');
+    const totalProd = items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vProd || 0), 0);
+    const totalNF = items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vNF || 0), 0);
+    const totalST = items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vST || 0), 0);
+    const totalBCST = items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vBCST || 0), 0);
+    const totalICMS = items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vICMS || 0), 0);
+    const totalBC = items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vBC || 0), 0);
 
     return {
       ...first,
       nNF: `LOTE (${items.length} NFs)`,
       serie: 'MASSA',
-      dhEmi: first.dhEmi,
+      dhEmi: first.dhEmi || new Date().toISOString(),
       dEmiFormatada: `${items.length} Notas Importadas`,
       emitente: {
-        ...first.emitente,
+        ...(first.emitente || {}),
         xNome: `Lote Consolidado (${items.length} Fornecedores)`,
-      },
+      } as any,
       destinatario: first.destinatario,
       totaisXML: {
         vProd: totalProd,
@@ -78,28 +81,29 @@ export default function App() {
         vBCST: totalBCST,
         vICMS: totalICMS,
         vBC: totalBC,
-        vFCP: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vFCP || 0), 0),
-        vFCPST: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vFCPST || 0), 0),
-        vIPI: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vIPI || 0), 0),
-        vFrete: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vFrete || 0), 0),
-        vSeg: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vSeg || 0), 0),
-        vDesc: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vDesc || 0), 0),
-        vOutro: items.reduce((acc, i) => acc + (i.parsed.totaisXML?.vOutro || 0), 0),
+        vFCP: items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vFCP || 0), 0),
+        vFCPST: items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vFCPST || 0), 0),
+        vIPI: items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vIPI || 0), 0),
+        vFrete: items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vFrete || 0), 0),
+        vSeg: items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vSeg || 0), 0),
+        vDesc: items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vDesc || 0), 0),
+        vOutro: items.reduce((acc, i) => acc + (i.parsed?.totaisXML?.vOutro || 0), 0),
       },
-      itens: items.flatMap((i) => i.parsed.itens),
+      itens: items.flatMap((i) => i.parsed?.itens || []),
     };
   };
 
   const createConsolidatedAuditoria = (items: BatchItem[]): ResumoAuditoriaNFe => {
-    const first = items[0].audit;
-    const totalARecolher = items.reduce((acc, i) => acc + (i.audit.totalARecolher || 0), 0);
+    const first = items[0]?.audit;
+    if (!first) throw new Error('Nenhuma auditoria válida no lote');
+    const totalARecolher = items.reduce((acc, i) => acc + (i.audit?.totalARecolher || 0), 0);
 
     const allItensAuditados = items.flatMap((b) =>
-      b.audit.itensAuditados.map((it) => ({
+      (b.audit?.itensAuditados || []).map((it) => ({
         ...it,
         item: {
           ...it.item,
-          xProd: `[NF ${b.audit.nNF}] ${it.item.xProd}`,
+          xProd: `[NF ${b.audit?.nNF || 'N/D'}] ${it.item?.xProd || 'Produto'}`,
         },
       }))
     );
@@ -112,7 +116,7 @@ export default function App() {
       statusGeral: 'CONFIRMADO',
       totalARecolher,
       itensAuditados: allItensAuditados,
-      inconsistencias: items.flatMap((i) => i.audit.inconsistencias),
+      inconsistencias: items.flatMap((i) => i.audit?.inconsistencias || []),
     };
   };
 
@@ -210,6 +214,28 @@ export default function App() {
     }
   };
 
+  const handleAnalyzeParsedNFe = (
+    parsed: NFeParsed,
+    novaModalidade: ModalidadeMvaAutopecas = modalidadeAutopecas
+  ) => {
+    try {
+      setBatchItems([]);
+      setSelectedBatchId('ALL');
+      setNfeParsed(parsed);
+      setCurrentXml(`<nfeProc><NFe><infNFe Id="${parsed.chNFe}"><ide><nNF>${parsed.nNF}</nNF></ide></infNFe></NFe></nfeProc>`);
+      setModalidadeAutopecas(novaModalidade);
+
+      const auditResult = processarAuditoriaNFe(parsed, 'Revenda', {
+        forcarSTTodos: true,
+        itensCustom: {},
+        modalidadeAutopecas: novaModalidade,
+      });
+      setAuditoria(auditResult);
+    } catch (err: any) {
+      alert(`Falha no processamento fiscal: ${err?.message || 'Erro ao processar chave'}`);
+    }
+  };
+
   const handleDownloadXml = () => {
     if (!currentXml || !auditoria) return;
     const blob = new Blob([currentXml], { type: 'application/xml;charset=utf-8' });
@@ -231,6 +257,8 @@ export default function App() {
           if (pendingPayload) {
             if (pendingPayload.batch) {
               handleProcessBatchXmls(pendingPayload.batch, pendingPayload.mod || modalidadeAutopecas);
+            } else if (pendingPayload.parsed) {
+              handleAnalyzeParsedNFe(pendingPayload.parsed, pendingPayload.mod || modalidadeAutopecas);
             } else if (pendingPayload.xml) {
               handleAnalyzeXml(pendingPayload.xml, 'Revenda', pendingPayload.mod || modalidadeAutopecas);
             } else if (typeof pendingPayload === 'string') {
@@ -258,6 +286,7 @@ export default function App() {
         onOpenAiAudit={() => setIsAiAuditOpen(true)}
         onOpenPrint={() => setIsPrintSheetOpen(true)}
         onOpenMassImport={() => setIsMassImportOpen(true)}
+        onOpenProductExport={() => setIsProductExportOpen(true)}
         onOpenAutopecasGuide={() => setIsStatesMatrixOpen(true)}
         unreadCount={radar.unreadCount}
         countdownFormatted={radar.countdownFormatted}
@@ -286,12 +315,15 @@ export default function App() {
             onStartLoadingGame={(payload, mod) => {
               if (typeof payload === 'object' && payload.batch) {
                 setPendingPayload({ batch: payload.batch, mod });
+              } else if (typeof payload === 'object' && payload.parsed) {
+                setPendingPayload({ parsed: payload.parsed, mod });
               } else {
                 setPendingPayload({ xml: payload, mod });
               }
               setIsLoading(true);
             }}
             onOpenMassImportModal={() => setIsMassImportOpen(true)}
+            onOpenProductExport={() => setIsProductExportOpen(true)}
           />
         </section>
 
@@ -359,6 +391,15 @@ export default function App() {
                   <span>Baixar XML</span>
                 </button>
 
+                <button
+                  onClick={() => setIsProductExportOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  title="Exportar produtos para planilha Excel (.xlsx) no padrão oficial de 8 colunas com separação inteligente de descrição e aplicação"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-[#16A34A]" />
+                  <span>Exportar Produtos (.xlsx)</span>
+                </button>
+
                 {activeTab === 'BUYER' ? (
                   <div className="flex items-center gap-1.5">
                     <button
@@ -422,6 +463,7 @@ export default function App() {
                 <ProductDetailTable
                   itens={auditoria.itensAuditados}
                   onSelectMemoria={(item) => setSelectedItemMemoria(item)}
+                  onOpenProductExport={() => setIsProductExportOpen(true)}
                 />
               </div>
             )}
@@ -441,6 +483,7 @@ export default function App() {
                 <ProductDetailTable
                   itens={auditoria.itensAuditados}
                   onSelectMemoria={(item) => setSelectedItemMemoria(item)}
+                  onOpenProductExport={() => setIsProductExportOpen(true)}
                 />
               </div>
             )}
@@ -589,6 +632,13 @@ export default function App() {
           setIsLoading(true);
           setPendingPayload({ batch: filesData, mod });
         }}
+      />
+
+      {/* Modal: Exportador Inteligente de Produtos para Cadastro (Excel .xlsx - 8 Colunas) */}
+      <NFeProductExportModal
+        isOpen={isProductExportOpen}
+        onClose={() => setIsProductExportOpen(false)}
+        nfeParsed={nfeParsed}
       />
     </div>
   );

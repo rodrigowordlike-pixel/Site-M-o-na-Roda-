@@ -45,11 +45,7 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
 
   const handleCopySummary = () => {
     const emitenteNome = nfeParsed.emitente.xFant || nfeParsed.emitente.xNome || 'Fornecedor';
-    const regimeTexto = nfeParsed.emitente.crt === '1'
-      ? 'Simples Nacional'
-      : nfeParsed.emitente.crt === '2'
-      ? 'Simples Nacional (Excesso de Sublimite)'
-      : 'Regime Normal (RPA)';
+    const regimeTexto = nfeParsed.emitente.crtDescricao;
     const totalProd = nfeParsed.totaisXML.vProd || auditoria.itensAuditados.reduce((acc, it) => acc + it.item.vProd, 0);
     const totalNF = nfeParsed.totaisXML.vNF;
     const icmsST = auditoria.totalARecolher;
@@ -90,33 +86,51 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
   };
 
   // Somatórias consolidadas da nota (com proteção total contra null/undefined/NaN)
-  const totais = nfeParsed?.totaisXML || { vProd: 0, vNF: 0, vST: 0, vBC: 0, vICMS: 0 };
+  const totais = nfeParsed?.totaisXML || { vProd: 0, vNF: 0, vST: 0, vBC: 0, vICMS: 0, vBCST: 0 };
   const itens = auditoria?.itensAuditados || [];
 
+  const getItemST = (it: any): number => {
+    if (it?.totalRecolher > 0) return Number(it.totalRecolher);
+    if (it?.icmsST > 0) return Number(it.icmsST);
+    if (it?.item?.vICMSST > 0) return Number(it.item.vICMSST);
+    if (it?.memoriaCalculo?.icmsSTDevido > 0) return Number(it.memoriaCalculo.icmsSTDevido);
+    return 0;
+  };
+
+  const getItemBaseST = (it: any): number => {
+    if (it?.baseST > 0) return Number(it.baseST);
+    if (it?.item?.vBCST > 0) return Number(it.item.vBCST);
+    if (it?.memoriaCalculo?.baseST > 0) return Number(it.memoriaCalculo.baseST);
+    return 0;
+  };
+
   const totalProdutos = Number(totais.vProd) || itens.reduce((acc, it) => acc + (Number(it?.item?.vProd) || 0), 0) || 0;
-  const totalBaseST = itens.reduce((acc, it) => acc + (Number(it?.baseST) || 0), 0) || 0;
+  const totalBaseST = itens.reduce((acc, it) => acc + getItemBaseST(it), 0) || Number(totais.vBCST) || 0;
   const totalDebitoST = itens.reduce((acc, it) => acc + (Number(it?.memoriaCalculo?.debitoSTBruto) || 0), 0) || 0;
   const totalCreditoProprio = itens.reduce((acc, it) => acc + (Number(it?.memoriaCalculo?.icmsProprioDeduzivel) || 0), 0) || 0;
-  const totalSTRecolher = Number(auditoria?.totalARecolher) || 0;
+  const totalSTRecolher = itens.reduce((acc, it) => acc + getItemST(it), 0) || Number(auditoria?.totalARecolher) || Number(totais.vST) || 0;
   const totalVNF = Number(totais.vNF) || totalProdutos;
   const totalCustoCompra = totalVNF + totalSTRecolher;
 
-  // Estatísticas de Origem
+  // Estatísticas de Origem e Quantidades
   const itensImportados = itens.filter((it) => ['1', '2', '3', '8'].includes(String(it?.item?.origem || '')));
   const itensNacionais = itens.filter((it) => !['1', '2', '3', '8'].includes(String(it?.item?.origem || '')));
+  const qtdImportados = itensImportados.reduce((acc, it) => acc + (Number(it?.item?.qCom) || 0), 0);
+  const qtdNacionais = itensNacionais.reduce((acc, it) => acc + (Number(it?.item?.qCom) || 0), 0);
+  const totalQtdGeral = itens.reduce((acc, it) => acc + (Number(it?.item?.qCom) || 0), 0);
 
   // Totais por grupo
   const vProdImportados = itensImportados.reduce((acc, it) => acc + (Number(it?.item?.vProd) || 0), 0);
-  const baseSTImportados = itensImportados.reduce((acc, it) => acc + (Number(it?.baseST) || 0), 0);
+  const baseSTImportados = itensImportados.reduce((acc, it) => acc + getItemBaseST(it), 0);
   const debitoSTImportados = itensImportados.reduce((acc, it) => acc + (Number(it?.memoriaCalculo?.debitoSTBruto) || 0), 0);
   const creditoImportados = itensImportados.reduce((acc, it) => acc + (Number(it?.memoriaCalculo?.icmsProprioDeduzivel) || 0), 0);
-  const stImportados = itensImportados.reduce((acc, it) => acc + (Number(it?.totalRecolher) || 0), 0);
+  const stImportados = itensImportados.reduce((acc, it) => acc + getItemST(it), 0);
 
   const vProdNacionais = itensNacionais.reduce((acc, it) => acc + (Number(it?.item?.vProd) || 0), 0);
-  const baseSTNacionais = itensNacionais.reduce((acc, it) => acc + (Number(it?.baseST) || 0), 0);
+  const baseSTNacionais = itensNacionais.reduce((acc, it) => acc + getItemBaseST(it), 0);
   const debitoSTNacionais = itensNacionais.reduce((acc, it) => acc + (Number(it?.memoriaCalculo?.debitoSTBruto) || 0), 0);
   const creditoNacionais = itensNacionais.reduce((acc, it) => acc + (Number(it?.memoriaCalculo?.icmsProprioDeduzivel) || 0), 0);
-  const stNacionais = itensNacionais.reduce((acc, it) => acc + (Number(it?.totalRecolher) || 0), 0);
+  const stNacionais = itensNacionais.reduce((acc, it) => acc + getItemST(it), 0);
 
   return (
     <div className="printable-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
@@ -317,12 +331,12 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
 
                 <table className="w-full text-left text-[7.5px] border-collapse border border-gray-400 table-fixed">
                   <colgroup>
-                    <col style={{ width: '28%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '9%' }} />
-                    <col style={{ width: '13%' }} />
-                    <col style={{ width: '22%' }} />
-                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '24%' }} />
+                    <col style={{ width: '14%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '21%' }} />
+                    <col style={{ width: '21%' }} />
                   </colgroup>
                   <thead className="bg-gray-200 text-black font-bold uppercase text-[6.5px]">
                     <tr className="border-b border-gray-400">
@@ -334,32 +348,41 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
                       <th className="py-0.5 px-1.5 text-right font-black whitespace-nowrap">ICMS-ST a Pagar</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-300 font-mono text-[7.5px]">
+                  <tbody className="divide-y divide-gray-300 font-mono text-[7px]">
                     <tr className="hover:bg-gray-50">
-                      <td className="py-0.5 px-1.5 border-r border-gray-300 font-sans font-bold text-[7px]">
+                      <td className="py-0.5 px-1.5 border-r border-gray-300 font-sans font-bold text-[6.5px]">
                         Peças Nacionais (Origem 0, 4, 5)
                       </td>
-                      <td className="py-0.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">{itensNacionais.length}</td>
+                      <td className="py-0.5 px-1 border-r border-gray-300 text-center">
+                        <div className="leading-tight font-bold">{itensNacionais.length} it</div>
+                        <div className="text-[6px] text-gray-600">{qtdNacionais} un</div>
+                      </td>
                       <td className="py-0.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">12%</td>
                       <td className="py-0.5 px-1.5 border-r border-gray-300 text-right font-bold whitespace-nowrap">87,78%</td>
                       <td className="py-0.5 px-1.5 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(baseSTNacionais)}</td>
                       <td className="py-0.5 px-1.5 text-right font-black whitespace-nowrap">{formatBRL(stNacionais)}</td>
                     </tr>
                     <tr className="hover:bg-gray-50">
-                      <td className="py-0.5 px-1.5 border-r border-gray-300 font-sans font-bold text-[7px]">
+                      <td className="py-0.5 px-1.5 border-r border-gray-300 font-sans font-bold text-[6.5px]">
                         Peças Importadas (Origem 1, 2, 3, 8)
                       </td>
-                      <td className="py-0.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">{itensImportados.length}</td>
+                      <td className="py-0.5 px-1 border-r border-gray-300 text-center">
+                        <div className="leading-tight font-bold">{itensImportados.length} it</div>
+                        <div className="text-[6px] text-gray-600">{qtdImportados} un</div>
+                      </td>
                       <td className="py-0.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">4%</td>
                       <td className="py-0.5 px-1.5 border-r border-gray-300 text-right font-bold whitespace-nowrap">104,86%</td>
                       <td className="py-0.5 px-1.5 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(baseSTImportados)}</td>
                       <td className="py-0.5 px-1.5 text-right font-black whitespace-nowrap">{formatBRL(stImportados)}</td>
                     </tr>
                   </tbody>
-                  <tfoot className="bg-gray-100 font-bold border-t-2 border-black font-mono text-[7.5px]">
+                  <tfoot className="bg-gray-100 font-bold border-t-2 border-black font-mono text-[7px]">
                     <tr>
-                      <td className="py-0.5 px-1.5 border-r border-gray-400 uppercase font-sans text-[7px]">TOTAL CONSOLIDADO:</td>
-                      <td className="py-0.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">{auditoria.itensAuditados.length}</td>
+                      <td className="py-0.5 px-1.5 border-r border-gray-400 uppercase font-sans text-[6.5px]">TOTAL CONSOLIDADO:</td>
+                      <td className="py-0.5 px-1 border-r border-gray-400 text-center">
+                        <div className="leading-tight font-bold">{auditoria.itensAuditados.length} it</div>
+                        <div className="text-[6px] text-gray-600">{totalQtdGeral} un</div>
+                      </td>
                       <td className="py-0.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">—</td>
                       <td className="py-0.5 px-1.5 border-r border-gray-400 text-center whitespace-nowrap">—</td>
                       <td className="py-0.5 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">{formatBRL(totalBaseST)}</td>
@@ -437,67 +460,69 @@ export const PrintableCalculationSheet: React.FC<PrintableCalculationSheetProps>
                 <span className="font-mono text-gray-600 text-[7.5px]">{auditoria.itensAuditados.length} ITENS</span>
               </div>
 
-              <table className="w-full text-left text-[7.5px] border-collapse border border-gray-400 table-fixed">
+              <table className="w-full text-left text-[7px] border-collapse border border-gray-400 table-fixed">
                 <colgroup>
-                  <col style={{ width: '4%' }} />
-                  <col style={{ width: '31%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '3%' }} />
+                  <col style={{ width: '27%' }} />
+                  <col style={{ width: '7%' }} />
                   <col style={{ width: '13%' }} />
-                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '14%' }} />
                 </colgroup>
-                <thead className="bg-gray-200 text-black font-bold uppercase text-[7px]">
+                <thead className="bg-gray-200 text-black font-bold uppercase text-[6.5px]">
                   <tr className="border-b border-gray-400">
-                    <th className="py-1.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">#</th>
-                    <th className="py-1.5 px-1.5 border-r border-gray-400">Descrição da Peça / Cód / NCM</th>
-                    <th className="py-1.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">Qtd</th>
-                    <th className="py-1.5 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">Total NF</th>
-                    <th className="py-1.5 px-1 border-r border-gray-400 text-right whitespace-nowrap">MVA</th>
-                    <th className="py-1.5 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">Base ST</th>
-                    <th className="py-1.5 px-1.5 border-r border-gray-400 text-right font-black bg-amber-100/50 whitespace-nowrap">ST a Pagar</th>
-                    <th className="py-1.5 px-1.5 text-right font-black whitespace-nowrap">Custo Total</th>
+                    <th className="py-1 px-0.5 border-r border-gray-400 text-center whitespace-nowrap">#</th>
+                    <th className="py-1 px-1 border-r border-gray-400">Descrição da Peça / Cód / NCM</th>
+                    <th className="py-1 px-0.5 border-r border-gray-400 text-center whitespace-nowrap">Qtd</th>
+                    <th className="py-1 px-1 border-r border-gray-400 text-right whitespace-nowrap">Total NF</th>
+                    <th className="py-1 px-0.5 border-r border-gray-400 text-right whitespace-nowrap">MVA</th>
+                    <th className="py-1 px-1 border-r border-gray-400 text-right whitespace-nowrap">Base ST</th>
+                    <th className="py-1 px-1 border-r border-gray-400 text-right font-black bg-amber-100/50 whitespace-nowrap">ST a Pagar</th>
+                    <th className="py-1 px-1 text-right font-black whitespace-nowrap">Custo Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-300 font-mono text-[7px]">
+                <tbody className="divide-y divide-gray-300 font-mono text-[6.5px]">
                   {auditoria.itensAuditados.map((it) => {
                     const isImportado = ['1', '2', '3', '8'].includes(it.item.origem);
-                    const custoRealItem = it.item.vProd + it.totalRecolher;
+                    const itemST = getItemST(it);
+                    const itemBaseST = getItemBaseST(it);
+                    const custoRealItem = it.item.vProd + itemST;
 
                     return (
                       <tr key={it.item.nItem} className="hover:bg-gray-50 avoid-break">
-                        <td className="py-1.5 px-1 border-r border-gray-300 text-center font-bold whitespace-nowrap">#{it.item.nItem}</td>
-                        <td className="py-1.5 px-1.5 border-r border-gray-300 font-sans">
-                          <div className="font-bold text-black">{it.item.xProd}</div>
-                          <div className="text-[6.5px] text-gray-600 font-mono whitespace-nowrap">
+                        <td className="py-1 px-0.5 border-r border-gray-300 text-center font-bold whitespace-nowrap">#{it.item.nItem}</td>
+                        <td className="py-1 px-1 border-r border-gray-300 font-sans">
+                          <div className="font-bold text-black truncate">{it.item.xProd}</div>
+                          <div className="text-[6px] text-gray-600 font-mono whitespace-nowrap">
                             Cód: {it.item.cProd} · NCM: {it.item.ncm} · {isImportado ? 'Imp (4%)' : 'Nac (12%)'}
                           </div>
                         </td>
-                        <td className="py-1.5 px-1 border-r border-gray-300 text-center whitespace-nowrap">{it.item.qCom} {it.item.uCom}</td>
-                        <td className="py-1.5 px-1.5 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(it.item.vProd)}</td>
-                        <td className="py-1.5 px-1 border-r border-gray-300 text-right font-bold whitespace-nowrap">{it.mva.toFixed(2)}%</td>
-                        <td className="py-1.5 px-1.5 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(it.baseST)}</td>
-                        <td className="py-1.5 px-1.5 border-r border-gray-300 text-right font-black bg-amber-50 whitespace-nowrap">
-                          {formatBRL(it.totalRecolher)}
+                        <td className="py-1 px-0.5 border-r border-gray-300 text-center whitespace-nowrap">{it.item.qCom} {it.item.uCom}</td>
+                        <td className="py-1 px-1 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(it.item.vProd)}</td>
+                        <td className="py-1 px-0.5 border-r border-gray-300 text-right font-bold whitespace-nowrap">{it.mva.toFixed(2)}%</td>
+                        <td className="py-1 px-1 border-r border-gray-300 text-right whitespace-nowrap">{formatBRL(itemBaseST)}</td>
+                        <td className="py-1 px-1 border-r border-gray-300 text-right font-black bg-amber-50 whitespace-nowrap">
+                          {formatBRL(itemST)}
                         </td>
-                        <td className="py-1.5 px-1.5 text-right font-black whitespace-nowrap">{formatBRL(custoRealItem)}</td>
+                        <td className="py-1 px-1 text-right font-black whitespace-nowrap">{formatBRL(custoRealItem)}</td>
                       </tr>
                     );
                   })}
                 </tbody>
-                <tfoot className="bg-gray-100 font-bold border-t-2 border-black font-mono text-[7.5px]">
+                <tfoot className="bg-gray-100 font-bold border-t-2 border-black font-mono text-[6.5px]">
                   <tr>
-                    <td colSpan={3} className="py-1.5 px-1.5 border-r border-gray-400 text-right uppercase font-sans">
+                    <td colSpan={3} className="py-1 px-1 border-r border-gray-400 text-right uppercase font-sans text-[6px]">
                       TOTAIS CONSOLIDADOS:
                     </td>
-                    <td className="py-1.5 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">{formatBRL(totalProdutos)}</td>
-                    <td className="py-1.5 px-1 border-r border-gray-400 text-center whitespace-nowrap">—</td>
-                    <td className="py-1.5 px-1.5 border-r border-gray-400 text-right whitespace-nowrap">{formatBRL(totalBaseST)}</td>
-                    <td className="py-1.5 px-1.5 border-r border-gray-400 text-right font-black bg-amber-100 whitespace-nowrap">
+                    <td className="py-1 px-1 border-r border-gray-400 text-right whitespace-nowrap">{formatBRL(totalProdutos)}</td>
+                    <td className="py-1 px-0.5 border-r border-gray-400 text-center whitespace-nowrap">—</td>
+                    <td className="py-1 px-1 border-r border-gray-400 text-right whitespace-nowrap">{formatBRL(totalBaseST)}</td>
+                    <td className="py-1 px-1 border-r border-gray-400 text-right font-black bg-amber-100 whitespace-nowrap">
                       {formatBRL(totalSTRecolher)}
                     </td>
-                    <td className="py-1.5 px-1.5 text-right font-black whitespace-nowrap">{formatBRL(totalCustoCompra)}</td>
+                    <td className="py-1 px-1 text-right font-black whitespace-nowrap">{formatBRL(totalCustoCompra)}</td>
                   </tr>
                 </tfoot>
               </table>

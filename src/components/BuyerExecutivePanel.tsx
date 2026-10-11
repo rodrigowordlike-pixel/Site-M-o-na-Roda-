@@ -40,16 +40,6 @@ export const BuyerExecutivePanel: React.FC<BuyerExecutivePanelProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
-  const getRegimeOficial = (crt: string) => {
-    if (crt === '1') return 'Simples Nacional';
-    if (crt === '2') return 'Simples Nacional (Excesso de Sublimite)';
-    return 'Regime Normal (RPA)';
-  };
-
-  const [regimeSelecionado, setRegimeSelecionado] = useState<string>(
-    getRegimeOficial(nfeParsed.emitente.crt)
-  );
-
   const formatBRL = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -82,7 +72,7 @@ export const BuyerExecutivePanel: React.FC<BuyerExecutivePanelProps> = ({
     const texto = `📊 *RESUMO DE COMPRA & ICMS-ST (MÃO NA RODA)*
 📄 *NF-e:* ${auditoria.nNF} (Série ${auditoria.serie})
 🏢 *Fornecedor:* ${nfeParsed.emitente.xNome} (${nfeParsed.emitente.uf})
-🏷️ *Regime:* ${regimeSelecionado}
+🏷️ *Regime (XML):* ${nfeParsed.emitente.crtDescricao}
 📍 *Destino:* ${nfeParsed.destinatario.xNome} (${nfeParsed.destinatario.uf})
 🗓️ *Data:* ${auditoria.dataEmissao}
 
@@ -116,19 +106,32 @@ export const BuyerExecutivePanel: React.FC<BuyerExecutivePanelProps> = ({
           <h2 className="text-xl sm:text-2xl font-black text-[#1F2937] tracking-tight flex items-center gap-2">
             NF-e {auditoria.nNF} · <span className="text-slate-600 font-semibold">{nfeParsed.emitente.xNome}</span>
           </h2>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs text-slate-500 font-mono">Regime Tributário:</span>
-            <select
-              value={regimeSelecionado}
-              onChange={(e) => setRegimeSelecionado(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-[#166534] text-xs rounded px-2 py-0.5 font-mono font-bold focus:outline-none focus:border-[#16A34A] cursor-pointer"
-            >
-              <option value="Simples Nacional">Simples Nacional (CRT 1)</option>
-              <option value="Simples Nacional (Excesso de Sublimite)">Simples Nacional - Excesso (CRT 2)</option>
-              <option value="Regime Normal (RPA)">Regime Normal / RPA (CRT 3)</option>
-              <option value="Lucro Presumido">Lucro Presumido (Confirmação Manual)</option>
-              <option value="Lucro Real">Lucro Real (Confirmação Manual)</option>
-            </select>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className="text-xs text-slate-500 font-medium">Regime Tributário do Emitente:</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono text-xs font-bold bg-slate-50 border border-slate-200 shadow-2xs">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  nfeParsed.emitente.crt === '1' || nfeParsed.emitente.crt === '4'
+                    ? 'bg-emerald-500'
+                    : nfeParsed.emitente.crt === '2'
+                    ? 'bg-amber-500'
+                    : 'bg-blue-500'
+                }`}
+              />
+              <span className="text-[#1F2937]">{nfeParsed.emitente.crtDescricao}</span>
+              <span className="text-[10px] uppercase font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                Conforme XML (CRT {nfeParsed.emitente.crt})
+              </span>
+            </div>
+            {nfeParsed.emitente.crt === '1' || nfeParsed.emitente.crt === '4' ? (
+              <span className="text-[11px] text-[#166534] font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                ✓ MVA Original mantida (Vedado ajuste pelo Conv. ICMS 35/2011)
+              </span>
+            ) : (
+              <span className="text-[11px] text-blue-800 font-medium bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                ✓ MVA Ajustada aplicada (Convênio ICMS 142/2018)
+              </span>
+            )}
           </div>
         </div>
 

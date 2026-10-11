@@ -12,7 +12,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  DollarSign
+  DollarSign,
+  FileSpreadsheet
 } from 'lucide-react';
 import { ItemAuditoria, ClassificacaoST } from '../types/fiscal';
 
@@ -21,6 +22,7 @@ interface ProductDetailTableProps {
   onSelectMemoria: (item: ItemAuditoria) => void;
   onToggleForcarST?: (itemNumero: number, forcar: boolean) => void;
   onUpdateMvaManual?: (itemNumero: number, mva: number) => void;
+  onOpenProductExport?: () => void;
 }
 
 export const ProductDetailTable: React.FC<ProductDetailTableProps> = ({
@@ -28,6 +30,7 @@ export const ProductDetailTable: React.FC<ProductDetailTableProps> = ({
   onSelectMemoria,
   onToggleForcarST,
   onUpdateMvaManual,
+  onOpenProductExport,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'IMPORTADO' | 'NACIONAL' | 'COM_ST'>('ALL');
@@ -168,6 +171,18 @@ export const ProductDetailTable: React.FC<ProductDetailTableProps> = ({
               <option value={100}>100 itens</option>
             </select>
           </div>
+
+          {onOpenProductExport && (
+            <button
+              type="button"
+              onClick={onOpenProductExport}
+              className="h-7.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-[0.98]"
+              title="Exportar produtos para planilha Excel (.xlsx) com padrão oficial de 8 colunas e separação de descrição e aplicação"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Exportar (.xlsx)</span>
+            </button>
+          )}
         </div>
       </div>
 

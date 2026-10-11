@@ -26,15 +26,18 @@ export const LoadingGameOverlay: React.FC<LoadingGameOverlayProps> = ({ isLoadin
         if (prev >= 100) {
           clearInterval(interval);
           setShowFinished(true);
+          setTimeout(() => {
+            onComplete();
+          }, 350);
           return 100;
         }
-        const next = prev + Math.floor(Math.random() * 20) + 15;
+        const next = prev + 35;
         return next > 100 ? 100 : next;
       });
-    }, 150);
+    }, 80);
 
     return () => clearInterval(interval);
-  }, [isLoading]);
+  }, [isLoading, onComplete]);
 
   if (!isLoading && !showFinished) return null;
 

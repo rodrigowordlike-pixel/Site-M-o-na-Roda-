@@ -41,16 +41,6 @@ export const ResultSummary: React.FC<ResultSummaryProps> = ({
 
   const [copied, setCopied] = useState(false);
 
-  const getRegimeOficial = (crt: string) => {
-    if (crt === '1') return 'Simples Nacional';
-    if (crt === '2') return 'Simples Nacional (Excesso de Sublimite)';
-    return 'Regime Normal (RPA)';
-  };
-
-  const [regimeSelecionado, setRegimeSelecionado] = useState<string>(
-    getRegimeOficial(nfeParsed.emitente.crt)
-  );
-
   const handlePrint = () => {
     if (onOpenPrint) {
       onOpenPrint();
@@ -66,7 +56,7 @@ export const ResultSummary: React.FC<ResultSummaryProps> = ({
     const icmsST = auditoria.totalARecolher;
     const custoReal = totalNF + icmsST;
 
-    const textToCopy = `MÃO NA RODA — ${emitenteNome}\n🏢 *Regime:* ${regimeSelecionado}\n\n💰 *Valor dos Produtos:* ${formatBRL(totalProdutos)}\n📦 *Valor Total da NF:* ${formatBRL(totalNF)}\n⚖️ *ICMS-ST a Recolher:* ${formatBRL(icmsST)}\n🏁 *CUSTO REAL DA COMPRA:* ${formatBRL(custoReal)}`;
+    const textToCopy = `MÃO NA RODA — ${emitenteNome}\n🏢 *Regime (XML):* ${nfeParsed.emitente.crtDescricao}\n\n💰 *Valor dos Produtos:* ${formatBRL(totalProdutos)}\n📦 *Valor Total da NF:* ${formatBRL(totalNF)}\n⚖️ *ICMS-ST a Recolher:* ${formatBRL(icmsST)}\n🏁 *CUSTO REAL DA COMPRA:* ${formatBRL(custoReal)}`;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
       setCopied(true);
@@ -300,17 +290,9 @@ export const ResultSummary: React.FC<ResultSummaryProps> = ({
               <div>
                 <div className="text-slate-500 text-[11px] flex items-center justify-between mb-1">
                   <span>EMITENTE ({auditoria.ufOrigem}):</span>
-                  <select
-                    value={regimeSelecionado}
-                    onChange={(e) => setRegimeSelecionado(e.target.value)}
-                    className="bg-white border border-slate-200 text-[#166534] text-[11px] rounded px-1.5 py-0.5 font-mono font-bold focus:outline-none focus:border-[#16A34A] cursor-pointer"
-                  >
-                    <option value="Simples Nacional">Simples Nacional (CRT 1)</option>
-                    <option value="Simples Nacional (Excesso de Sublimite)">Simples Nacional - Excesso (CRT 2)</option>
-                    <option value="Regime Normal (RPA)">Regime Normal / RPA (CRT 3)</option>
-                    <option value="Lucro Presumido">Lucro Presumido (Confirmação Manual)</option>
-                    <option value="Lucro Real">Lucro Real (Confirmação Manual)</option>
-                  </select>
+                  <span className="font-mono font-bold text-[#166534] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]">
+                    {nfeParsed.emitente.crtDescricao}
+                  </span>
                 </div>
                 <div className="font-medium text-[#1F2937] truncate">{nfeParsed.emitente.xNome}</div>
                 <div className="font-mono text-slate-500 text-[11px]">CNPJ: {nfeParsed.emitente.cnpj}</div>

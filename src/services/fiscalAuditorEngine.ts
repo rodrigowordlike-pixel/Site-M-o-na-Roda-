@@ -101,7 +101,7 @@ export function auditarItem(
   const ufOrigem = nfe.emitente.uf;
   const ufDestino = nfe.destinatario.uf;
   const ehInterestadual = ufOrigem !== ufDestino;
-  const emitenteSimples = nfe.emitente.crt === '1';
+  const emitenteSimples = nfe.emitente.crt === '1' || nfe.emitente.crt === '4' || !!item.csosn;
   const destinatarioContribuinte = nfe.destinatario.indIEDest === '1';
   const modalidadeAutopecas = customOverrides?.modalidadeAutopecas || 'MVA_71_78';
 
@@ -165,12 +165,14 @@ export function auditarItem(
 
   // E. Identificação de NCM Não Sujeito à ST (Fora do Âmbito do ICMS-ST pelo NCM / CEST)
   const NcmForaDaST =
+    !ehInterestadual &&
     !enquadramentoST &&
     !temIndicadorXML &&
     customOverrides?.forcarST !== true;
 
   // F. Identificação de NCM sem regime de ST na UF de destino
   const estadoDestinoSemST =
+    !ehInterestadual &&
     enquadramentoST &&
     enquadramentoST.ufsComSTInterna !== 'TODAS' &&
     !enquadramentoST.ufsComSTInterna.includes(ufDestino) &&
@@ -343,13 +345,13 @@ export function auditarItem(
   } else if (ehSTRetidaPeloRemetente) {
     // CASO 5: ST Retida e Faturada na Origem pelo Remetente (CST 10, 30, 70 / CSOSN 201, 202, 203 com vICMSST > 0)
     classificacao = 'B';
-    classificacaoDescricao = `B — ST retida/faturada na operação pelo remetente (R$ ${item.vICMSST.toFixed(2)}). Adquirente paga na fatura do fornecedor.`;
+    classificacaoDescricao = `B — ST retida/faturada na operação pelo remetente (R$ ${(item.vICMSST || icmsSTCalculado).toFixed(2)}). Adquirente paga na fatura do fornecedor.`;
     responsavel = 'REMETENTE';
     baseSTRinal = item.vBCST > 0 ? item.vBCST : baseSTCalculada;
-    valorFinalSTRecolher = 0; // Já faturado na nota, não gera guia de antecipação extra na entrada
+    valorFinalSTRecolher = item.vICMSST > 0 ? item.vICMSST : icmsSTCalculado;
 
     passoAPasso.push(
-      `1. Operação: ${ufOrigem} ➔ ${ufDestino}. ST retida pelo fornecedor no XML: R$ ${item.vICMSST.toFixed(2)}.`,
+      `1. Operação: ${ufOrigem} ➔ ${ufDestino}. ST destacada na NF-e: R$ ${valorFinalSTRecolher.toFixed(2)}.`,
       `2. Faturamento na Nota: O ICMS-ST foi calculado pelo remetente e destacado no campo vICMSST da NF-e.`,
       `3. Quitação via Fatura: O valor já compõe o total da nota cobrado no boleto/fatura pelo fornecedor.`,
       `4. Guia de Antecipação na Entrada: R$ 0,00 (Desonerado de pagamento duplicado na entrada).`
@@ -511,13 +513,13 @@ function verificarInconsistenciasXML(nfe: NFeParsed): InconsistenciaXML[] {
       });
     }
 
-    if (nfe.emitente.crt === '1' && item.cst && !item.csosn) {
+    if ((nfe.emitente.crt === '1' || nfe.emitente.crt === '4') && item.cst && !item.csosn) {
       inconsistencias.push({
         itemNumero: item.nItem,
         codigo: 'CST_EM_SIMPLES_NACIONAL',
         tipo: 'ALERTA',
         campo: `det[${item.nItem}].imposto.ICMS`,
-        descricao: `Emitente enquadrado no Simples Nacional (CRT=1) utilizou tag CST (${item.cst}) em vez de CSOSN.`,
+        descricao: `Emitente enquadrado no Simples Nacional (${nfe.emitente.crtDescricao}) utilizou tag CST (${item.cst}) em vez de CSOSN.`,
         impacto: 'Pode distorcer a apropriação de crédito e o cálculo do ICMS próprio.',
         sugestao: 'Utilizar grupo ICMSSN com o respectivo CSOSN (ex: 101, 102, 201, 202, 500).',
       });

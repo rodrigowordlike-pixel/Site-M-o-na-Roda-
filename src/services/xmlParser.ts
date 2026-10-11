@@ -59,7 +59,7 @@ function findElements(parent: Element | Document | null, tagName: string): Eleme
 /**
  * Função utilitária para extrair texto de uma tag dentro de um elemento XML
  */
-function getText(parent: Element | null, tagName: string): string {
+function getText(parent: Element | Document | null, tagName: string): string {
   if (!parent) return '';
   const el = findElement(parent, tagName);
   return el?.textContent?.trim() || '';
@@ -68,7 +68,7 @@ function getText(parent: Element | null, tagName: string): string {
 /**
  * Converte valor textual de moeda/número em float seguro
  */
-function getFloat(parent: Element | null, tagName: string, defaultValue = 0): number {
+function getFloat(parent: Element | Document | null, tagName: string, defaultValue = 0): number {
   const str = getText(parent, tagName);
   if (!str) return defaultValue;
   const num = parseFloat(str.replace(',', '.'));
@@ -83,19 +83,37 @@ export function parseNFeXML(xmlString: string): NFeParsed {
     throw new Error('Conteúdo XML vazio ou inválido.');
   }
 
+  // Sanitização: remove BOM, limpa caracteres de controle iniciais e padroniza encoding
+  let sanitizedXml = xmlString
+    .replace(/^\uFEFF/, '')
+    .replace(/^[\x00-\x20]+/, '')
+    .trim();
+
+  // Substitui declaração de encoding legada (ISO-8859-1, Windows-1252) por UTF-8 para o DOMParser
+  sanitizedXml = sanitizedXml.replace(/encoding=["'](ISO-8859-1|windows-1252|latin1)["']/i, 'encoding="UTF-8"');
+
   const parser = new DOMParser();
-  const xmlDoc = parser.parseFromString(xmlString.trim(), 'text/xml');
+  let xmlDoc = parser.parseFromString(sanitizedXml, 'text/xml');
 
   // Verificar erros de parse do DOMParser
-  const parseError = findElement(xmlDoc, 'parsererror');
+  let parseError = findElement(xmlDoc, 'parsererror');
   if (parseError) {
-    throw new Error(`Arquivo XML inválido ou malformado: ${parseError.textContent?.slice(0, 150)}`);
+    // Tentativa secundária: remover prólogo XML se houver erro de cabeçalho
+    const withoutPrologue = sanitizedXml.replace(/<\?xml[^>]*\?>/i, '').trim();
+    xmlDoc = parser.parseFromString(withoutPrologue, 'text/xml');
+    parseError = findElement(xmlDoc, 'parsererror');
+    if (parseError) {
+      throw new Error(`Arquivo XML inválido ou malformado: ${parseError.textContent?.slice(0, 150)}`);
+    }
   }
 
-  // Localizar nó infNFe
-  const infNFe = findElement(xmlDoc, 'infNFe');
+  // Localizar nó infNFe (ou NFe como fallback)
+  let infNFe = findElement(xmlDoc, 'infNFe');
   if (!infNFe) {
-    throw new Error('Estrutura de NF-e inválida: tag <infNFe> não encontrada no arquivo XML.');
+    infNFe = findElement(xmlDoc, 'NFe') || findElement(xmlDoc, 'nfeProc');
+  }
+  if (!infNFe) {
+    throw new Error('Estrutura de NF-e inválida: tag <infNFe> ou <NFe> não encontrada no arquivo XML.');
   }
 
   // Chave de Acesso (Id de infNFe, ex: NFe35240212345678000195550010001234561000000018 ou tag chNFe em protNFe)
@@ -135,8 +153,46 @@ export function parseNFeXML(xmlString: string): NFeParsed {
   // Dados do Emitente (<emit>)
   const emit = findElement(xmlDoc, 'emit');
   const emitEnder = findElement(emit, 'enderEmit');
-  const rawCrt = getText(emit, 'CRT') || '3';
-  const crt = (rawCrt === '1' || rawCrt === '2' ? rawCrt : '3') as '1' | '2' | '3';
+
+  // Extrai o Código de Regime Tributário (CRT) diretamente da tag oficial do emitente
+  let rawCrt = getText(emit, 'CRT') || getText(xmlDoc, 'CRT');
+  if (!rawCrt) {
+    const crtEl = findElement(emit, 'CRT') || findElement(xmlDoc, 'CRT');
+    rawCrt = crtEl?.textContent?.trim() || '';
+  }
+
+  // Validação complementar por regex no XML original caso tags com prefixos ou atributos
+  if (!rawCrt) {
+    const crtMatch = sanitizedXml.match(/<(?:\w+:)?CRT[^>]*>\s*([1-4])\s*<\/(?:\w+:)?CRT>/i);
+    if (crtMatch) {
+      rawCrt = crtMatch[1].trim();
+    }
+  }
+
+  // Validação complementar pelo XML: se a tag CRT não estiver presente,
+  // analisa os grupos tributários de ICMS dos itens (<CSOSN> ou <ICMSSN>)
+  if (!rawCrt) {
+    const hasCsosnInXml =
+      sanitizedXml.includes('<CSOSN>') ||
+      sanitizedXml.includes('<csosn>') ||
+      /<(?:\w+:)?CSOSN[^>]*>\s*\d+\s*<\/(?:\w+:)?CSOSN>/i.test(sanitizedXml) ||
+      /<(?:\w+:)?ICMSSN\d+/i.test(sanitizedXml);
+    rawCrt = hasCsosnInXml ? '1' : '3';
+  }
+
+  // 1 = Simples Nacional, 2 = Simples Nacional - excesso de sublimite, 3 = Regime Normal, 4 = MEI
+  let crt: '1' | '2' | '3' | '4' = '3';
+  if (rawCrt === '1') crt = '1';
+  else if (rawCrt === '2') crt = '2';
+  else if (rawCrt === '4') crt = '4';
+  else crt = '3';
+
+  let crtDescricao = 'Regime Normal / RPA (CRT 3)';
+  if (crt === '1') crtDescricao = 'Simples Nacional (CRT 1)';
+  else if (crt === '2') crtDescricao = 'Simples Nacional - excesso de sublimite (CRT 2)';
+  else if (crt === '4') crtDescricao = 'Simples Nacional - MEI (CRT 4)';
+  else crtDescricao = 'Regime Normal / RPA (CRT 3)';
+
   const rawUfEmit = (getText(emitEnder, 'UF') || getText(emit, 'UF') || 'SP').toUpperCase() as UF;
 
   const emitente: EmitenteNFe = {
@@ -149,7 +205,7 @@ export function parseNFeXML(xmlString: string): NFeParsed {
     cMun: getText(emitEnder, 'cMun'),
     xMun: getText(emitEnder, 'xMun'),
     crt: crt,
-    crtDescricao: crt === '1' ? 'Simples Nacional' : crt === '2' ? 'Simples Nacional - excesso de sublimite' : 'Regime Normal (RPA / Lucro Presumido / Real)',
+    crtDescricao: crtDescricao,
   };
 
   // Dados do Destinatário (<dest>)
@@ -186,6 +242,8 @@ export function parseNFeXML(xmlString: string): NFeParsed {
     const rawNcm = getText(prod, 'NCM').replace(/\D/g, '');
     const ncm = rawNcm || '87082999';
     const cest = getText(prod, 'CEST') || undefined;
+    const cEAN = getText(prod, 'cEAN') || undefined;
+    const cEANTrib = getText(prod, 'cEANTrib') || undefined;
     const cfop = getText(prod, 'CFOP') || (emitente.uf !== destinatario.uf ? '6102' : '5102');
     const uCom = getText(prod, 'uCom') || 'UN';
     const qCom = getFloat(prod, 'qCom', 1);
@@ -269,6 +327,8 @@ export function parseNFeXML(xmlString: string): NFeParsed {
       xProd,
       ncm,
       cest,
+      cEAN,
+      cEANTrib,
       cfop,
       uCom,
       qCom,
@@ -299,6 +359,16 @@ export function parseNFeXML(xmlString: string): NFeParsed {
       pIPI,
       vIPI,
     });
+  }
+
+  // Se itens contêm CSOSN do Simples Nacional e CRT não foi declarado expressamente como '3', sincroniza
+  const temCsosnNosItens = itens.some((it) => !!it.csosn && it.csosn.trim() !== '');
+  if (temCsosnNosItens && emitente.crt === '3') {
+    const crtExplicitoNoXml = /<(?:\w+:)?CRT[^>]*>\s*3\s*<\/(?:\w+:)?CRT>/i.test(sanitizedXml);
+    if (!crtExplicitoNoXml) {
+      emitente.crt = '1';
+      emitente.crtDescricao = 'Simples Nacional (CRT 1)';
+    }
   }
 
   // Se por algum motivo det não foi encontrado, cria pelo menos um item seguro baseado no XML

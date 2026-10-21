@@ -1,16 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   UploadCloud,
   AlertCircle,
   Play,
-  FileCode,
-  HelpCircle,
   CheckCircle2,
   KeyRound,
   FileSpreadsheet,
 } from 'lucide-react';
 import { ModalidadeMvaAutopecas, NFeParsed } from '../types/fiscal';
 import { decodificarChaveAcesso } from '../utils/nfeKeyDecoder';
+import { gerarNFePorChaveAcesso } from '../utils/nfeData';
 
 interface XmlUploaderProps {
   onAnalyzeXml: (
@@ -31,8 +30,6 @@ interface XmlUploaderProps {
   onOpenProductExport?: () => void;
 }
 
-import { gerarNFePorChaveAcesso } from '../utils/nfeData';
-
 export const XmlUploader: React.FC<XmlUploaderProps> = ({
   isLoading,
   modalidadeAutopecas,
@@ -48,8 +45,6 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
   const [pendingParsed, setPendingParsed] = useState<NFeParsed | null>(null);
   const [pendingBatch, setPendingBatch] = useState<{ name: string; content: string }[] | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-
 
   const handleMultipleFilesUpload = (files: FileList | File[]) => {
     const fileList = Array.from(files);
@@ -173,32 +168,39 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-      <div className="px-4 py-3 border-b border-slate-100 bg-[#F8FAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+      {/* Header do Módulo de Recepção */}
+      <div className="px-5 sm:px-6 py-4 border-b border-slate-100 bg-[#F8FAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-[#1F2937] tracking-tight">
-            Apuração de ICMS-ST e Auditoria Fiscal
-          </h2>
-          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-            Escolha uma das duas opções oficiais para apuração da Substituição Tributária
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <span>Auditoria Fiscal & Apuração de ICMS-ST</span>
+            </h2>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+              RICMS / PR
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Ambiente executivo para NF-e modelo 55 (v4.00) · Análise de compras interestaduais para o Paraná
           </p>
         </div>
 
-        <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-medium self-start sm:self-auto flex-wrap gap-0.5">
+        {/* Segmented Control Mac/Linear Style */}
+        <div className="flex items-center bg-slate-200/60 p-1 rounded-xl text-xs font-semibold self-start sm:self-auto gap-1 border border-slate-200/50">
           <button
             type="button"
             onClick={() => {
               setActiveMode('upload');
               setErrorMsg(null);
             }}
-            className={`px-3 py-1.5 rounded transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeMode === 'upload'
-                ? 'bg-white text-[#16A34A] font-bold shadow-2xs'
-                : 'text-slate-600 hover:text-[#1F2937]'
+                ? 'bg-white text-slate-900 font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <UploadCloud className="h-4 w-4" />
-            <span>1. Subir Arquivo .XML</span>
+            <UploadCloud className="h-3.5 w-3.5 text-emerald-600" />
+            <span>1. Arquivo .XML / Lote</span>
           </button>
 
           <button
@@ -207,112 +209,112 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
               setActiveMode('accessKey');
               setErrorMsg(null);
             }}
-            className={`px-3 py-1.5 rounded transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeMode === 'accessKey'
-                ? 'bg-white text-[#16A34A] font-bold shadow-2xs'
-                : 'text-slate-600 hover:text-[#1F2937]'
+                ? 'bg-white text-slate-900 font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <KeyRound className="h-4 w-4" />
-            <span>2. Digitar Chave de Acesso</span>
+            <KeyRound className="h-3.5 w-3.5 text-emerald-600" />
+            <span>2. Chave de Acesso (44 Dígitos)</span>
           </button>
         </div>
       </div>
 
-      <div className="p-3.5 sm:p-4 space-y-3">
+      <div className="p-5 sm:p-6 lg:p-8 space-y-4">
         {activeMode === 'upload' && (
-          <>
+          <div className="relative border-2 border-dashed rounded-2xl p-7 sm:p-10 lg:p-12 text-center cursor-pointer transition-all border-slate-300/80 hover:border-emerald-500 bg-[#F8FAFC] hover:bg-slate-50/80 bg-grid-slate overflow-hidden group select-none block flex flex-col items-center justify-center">
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+              }}
+              onDrop={handleDrop}
+              className={`w-full space-y-4 ${
+                dragOver
+                  ? 'border-emerald-500 bg-emerald-50/80 ring-4 ring-emerald-500/20 scale-[1.003]'
+                  : ''
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="h-16 w-16 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex items-center justify-center text-emerald-600 group-hover:scale-105 group-hover:border-emerald-500/50 transition-all">
+                  <UploadCloud className="h-8 w-8" />
+                </div>
+              </div>
 
-            <div className="relative border-2 border-dashed rounded-xl p-5 sm:p-6 text-center cursor-pointer transition-all border-slate-300 hover:border-[#16A34A] bg-[#F8FAFC] hover:bg-slate-50 overflow-hidden group select-none block">
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  setDragOver(false);
-                }}
-                onDrop={handleDrop}
-                className={`relative space-y-2 ${
-                  dragOver
-                    ? 'border-[#16A34A] bg-[#DCFCE7]/60 ring-2 ring-[#16A34A]/30 scale-[1.005]'
-                    : ''
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2 mb-2.5">
-                  <div className="h-10 w-10 rounded-xl bg-[#DCFCE7] border border-[#16A34A]/30 flex items-center justify-center text-[#16A34A] shadow-2xs group-hover:scale-110 transition-transform">
-                    <UploadCloud className="h-5 w-5" />
+              {fileName && !pendingParsed ? (
+                <div className="space-y-2 max-w-lg mx-auto bg-white/95 backdrop-blur-xs border border-emerald-300 p-4 rounded-xl shadow-xs">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-md">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Documento Pronto para Auditoria
+                    </span>
+                  </div>
+                  <div className="text-xs sm:text-sm font-mono font-bold text-slate-800 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-lg inline-block max-w-full truncate">
+                    {fileName}
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Arquivo carregado com sucesso. Clique no botão de cálculo abaixo para iniciar a auditoria.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-w-2xl mx-auto">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-black text-slate-900 tracking-tight">
+                    Arraste os arquivos XML da NF-e aqui ou clique para selecionar
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-xl mx-auto">
+                    Compatível com padrão nacional <strong>NF-e modelo 55 (v4.00)</strong>. Suporta arquivo único ou <strong>lote ilimitado</strong> de notas fiscais simultâneas com segurança e processamento em memória local.
+                  </p>
+                  <div className="pt-2 flex items-center justify-center gap-2">
+                    <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all group-hover:bg-emerald-700 active:scale-[0.98]">
+                      <UploadCloud className="h-4 w-4" />
+                      <span>Selecionar Arquivo .XML ou Lote</span>
+                    </div>
+                  </div>
+                  <div className="pt-2 flex items-center justify-center flex-wrap gap-2 text-[11px] text-slate-500 font-medium">
+                    <span className="bg-slate-100 px-2.5 py-1 rounded text-slate-700">Padrão XML v4.00</span>
+                    <span>·</span>
+                    <span className="bg-slate-100 px-2.5 py-1 rounded text-slate-700">Multi-NFs em Lote</span>
+                    <span>·</span>
+                    <span className="bg-slate-100 px-2.5 py-1 rounded text-slate-700">Leitura Local Sem Retenção</span>
+                    <span>·</span>
+                    <span className="bg-slate-100 px-2.5 py-1 rounded text-slate-700">Blindagem TLS 1.3</span>
                   </div>
                 </div>
-
-                {fileName && !pendingParsed ? (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md">
-                        <FileCode className="h-3.5 w-3.5" /> Arquivo XML NF-e Pronto
-                      </span>
-                    </div>
-                    <div className="text-xs font-mono font-bold text-[#166534] bg-[#DCFCE7] border border-[#16A34A]/20 px-3 py-1 rounded-md inline-block max-w-full truncate shadow-2xs">
-                      {fileName}
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-normal">
-                      Clique em qualquer lugar deste quadro para substituir por outro arquivo XML
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="text-sm sm:text-base font-bold text-[#1F2937]">
-                      Clique em qualquer lugar deste quadro ou arraste o arquivo XML
-                    </div>
-                    <p className="text-xs text-slate-500 max-w-md mx-auto">
-                      Suporta arquivos <strong>.xml</strong> padrão NF-e modelo 55 (v4.00) ou selecione múltiplos para lote.
-                    </p>
-                    <div className="pt-1 flex items-center justify-center gap-2">
-                      <div className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#16A34A] hover:bg-[#15803d] text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98]">
-                        <UploadCloud className="h-4 w-4" />
-                        <span>Selecionar Arquivo .XML do Computador</span>
-                      </div>
-                    </div>
-                    <div className="pt-0.5">
-                      <span className="inline-block text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                        Exclusivo .XML (v4.00)
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <input
-                id="main-xml-file-input"
-                type="file"
-                multiple
-                accept=".xml,text/xml,application/xml"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    handleMultipleFilesUpload(e.target.files);
-                  }
-                  e.target.value = '';
-                }}
-              />
-
+              )}
             </div>
-          </>
+            <input
+              id="main-xml-file-input"
+              type="file"
+              multiple
+              accept=".xml,text/xml,application/xml"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  handleMultipleFilesUpload(e.target.files);
+                }
+                e.target.value = '';
+              }}
+            />
+          </div>
         )}
 
         {activeMode === 'accessKey' && (
-          <form onSubmit={handleAccessKeySubmit} className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-[#1F2937] flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <KeyRound className="h-3.5 w-3.5 text-[#16A34A]" />
-                  Chave de Acesso da NF-e (44 Dígitos):
+          <form onSubmit={handleAccessKeySubmit} className="space-y-4 bg-slate-50/70 border border-slate-200/90 rounded-2xl p-6 sm:p-8">
+            <div className="space-y-2 max-w-3xl mx-auto">
+              <label className="text-xs sm:text-sm font-bold text-slate-800 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-emerald-600" />
+                  Chave de Acesso Oficial da NF-e (44 Dígitos):
                 </span>
-                <span className="text-[10px] text-slate-500">
+                <span className="text-xs font-mono text-slate-500 bg-white border border-slate-200 px-2.5 py-0.5 rounded">
                   {accessKeyInput.replace(/\D/g, '').length}/44 dígitos
                 </span>
               </label>
@@ -321,97 +323,107 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
                 maxLength={60}
                 value={accessKeyInput}
                 onChange={(e) => setAccessKeyInput(e.target.value)}
-                placeholder="Ex: 3326 0713 6447 0400 0149 5500 1000 0548 0210 6251 2020"
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-[#1F2937] placeholder-slate-400 focus:bg-white focus:outline-none focus:border-[#16A34A] tracking-wider"
+                placeholder="Ex: 3524 0912 3456 7800 0195 5500 1000 0458 9210 0045 8928"
+                className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-base font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-3 focus:ring-emerald-500/15 tracking-wider shadow-2xs"
               />
+              <p className="text-[11px] text-slate-500">
+                Insira os 44 números presentes no código de barras do DANFE oficial para decodificar UF, CNPJ e número.
+              </p>
             </div>
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-[#16A34A] hover:bg-[#15803d] text-white font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-xs active:scale-[0.98]"
               >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>Validar e Carregar Chave</span>
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Validar e Decodificar Chave</span>
               </button>
 
               {pendingParsed && (
-                <span className="text-xs font-semibold text-[#166534] bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md flex items-center gap-1">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  Chave Decodificada com Sucesso
+                <span className="text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-lg flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  Chave Homologada com Sucesso
                 </span>
               )}
             </div>
 
             {pendingParsed && (
-              <div className="bg-emerald-50/60 border border-emerald-200 rounded-lg p-3 text-xs space-y-1.5">
-                <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+              <div className="bg-white border border-emerald-200 rounded-xl p-4 text-xs space-y-2.5 shadow-2xs max-w-3xl mx-auto mt-3">
+                <div className="font-bold text-emerald-950 flex items-center gap-1.5 pb-2 border-b border-emerald-100">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <span>Dados Decodificados da Chave de Acesso:</span>
+                  <span>Dossiê da Chave de Acesso Decodificada:</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-emerald-800">
-                  <div><strong>Emitente CNPJ:</strong> {pendingParsed.emitente.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</div>
-                  <div><strong>Razão Social:</strong> {pendingParsed.emitente.xNome}</div>
-                  <div><strong>NF-e Nº:</strong> {pendingParsed.nNF} | <strong>Série:</strong> {pendingParsed.serie}</div>
-                  <div><strong>UF Origem:</strong> {pendingParsed.emitente.uf} | <strong>Emissão:</strong> {pendingParsed.dEmiFormatada}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 font-medium">
+                  <div><span className="text-slate-500">Emitente CNPJ:</span> <span className="font-mono font-bold text-slate-900">{pendingParsed.emitente.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</span></div>
+                  <div><span className="text-slate-500">Razão Social:</span> <span className="font-bold text-slate-900">{pendingParsed.emitente.xNome}</span></div>
+                  <div><span className="text-slate-500">NF-e Número:</span> <span className="font-mono font-bold text-slate-900">{pendingParsed.nNF}</span> (Série {pendingParsed.serie})</div>
+                  <div><span className="text-slate-500">UF Origem:</span> <span className="font-bold text-slate-900">{pendingParsed.emitente.uf}</span> · Emissão: {pendingParsed.dEmiFormatada}</div>
                 </div>
               </div>
             )}
           </form>
         )}
 
-        <div>
+        {/* Botão Primário Executivo de Cálculo */}
+        <div className="pt-1">
           <button
             onClick={handleProcessCalculation}
             disabled={isLoading || (!pendingXml && !pendingBatch && !pendingParsed)}
-            className="w-full h-11 px-4 rounded-lg bg-[#16A34A] hover:bg-[#15803d] focus:outline-none focus:ring-2 focus:ring-[#16A34A] text-white font-bold text-xs sm:text-sm tracking-wide uppercase shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-12 sm:h-13 px-6 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-500/25 text-white font-black text-xs sm:text-sm tracking-wider uppercase shadow-md shadow-emerald-700/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
           >
             {isLoading ? (
-              <span>Calculando ICMS-ST...</span>
+              <span>Processando Auditoria Fiscal & Regras Tributárias...</span>
             ) : pendingBatch && pendingBatch.length > 1 ? (
               <>
                 <Play className="h-4 w-4 fill-white shrink-0" />
-                <span>Calcular Lote em Massa ({pendingBatch.length} NFs)</span>
+                <span>Auditar e Calcular Lote em Massa ({pendingBatch.length} Notas Fiscais)</span>
               </>
             ) : (
               <>
                 <Play className="h-4 w-4 fill-white shrink-0" />
-                <span>Calcular ICMS-ST a Recolher</span>
+                <span>Auditar NF-e e Calcular ICMS-ST a Recolher</span>
               </>
             )}
           </button>
         </div>
 
-            {(onOpenProductExport || onOpenMassImportModal) && (
-              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-end gap-2">
-                {onOpenProductExport && (
-                  <button
-                    type="button"
-                    onClick={onOpenProductExport}
-                    className="text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shadow-2xs"
-                    title="Exportar produtos de XML para planilha Excel (.xlsx) com padrão oficial de 8 colunas e separação de descrição e aplicação"
-                  >
-                    <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Exportar Produtos p/ Cadastro (.xlsx)</span>
-                  </button>
-                )}
-                {onOpenMassImportModal && (
-                  <button
-                    type="button"
-                    onClick={onOpenMassImportModal}
-                    className="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
-                  >
-                    <UploadCloud className="h-3.5 w-3.5 text-slate-500" />
-                    <span>Importação em Lote de XMLs</span>
-                  </button>
-                )}
-              </div>
-            )}
+        {/* Rodapé do Módulo com Ações Rápidas */}
+        {(onOpenProductExport || onOpenMassImportModal) && (
+          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="text-xs text-slate-500 font-medium hidden md:block">
+              Base Legal Homologada: <strong>RICMS-PR (Lei Estadual 21.850/2023)</strong> · MVAs Oficiais (87,78% Nac / 104,86% Imp)
+            </div>
+            <div className="flex items-center gap-2.5 ml-auto">
+              {onOpenProductExport && (
+                <button
+                  type="button"
+                  onClick={onOpenProductExport}
+                  className="font-bold text-emerald-950 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200/90 px-3.5 py-2 rounded-xl cursor-pointer transition-colors flex items-center gap-1.5 shadow-2xs"
+                  title="Exportar produtos de XML para planilha Excel (.xlsx) com padrão oficial de 8 colunas e separação de descrição e aplicação"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Exportar Produtos (.xlsx)</span>
+                </button>
+              )}
+              {onOpenMassImportModal && (
+                <button
+                  type="button"
+                  onClick={onOpenMassImportModal}
+                  className="font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3.5 py-2 rounded-xl cursor-pointer transition-colors flex items-center gap-1.5"
+                >
+                  <UploadCloud className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Importar em Massa</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {errorMsg && (
-          <div className="flex items-start gap-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg">
+          <div className="flex items-start gap-2 text-xs text-rose-800 bg-rose-50 border border-rose-200 p-3.5 rounded-xl">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
-            <span className="leading-relaxed">{errorMsg}</span>
+            <span className="leading-relaxed font-medium">{errorMsg}</span>
           </div>
         )}
       </div>

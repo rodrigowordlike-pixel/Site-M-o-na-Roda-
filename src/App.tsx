@@ -17,6 +17,7 @@ import { LoadingGameOverlay } from './components/LoadingGameOverlay';
 import { MassImportModal } from './components/MassImportModal';
 import { NFeProductExportModal } from './components/NFeProductExportModal';
 import { BatchSelectorBar, BatchItem } from './components/BatchSelectorBar';
+import { LandingPage } from './components/LandingPage';
 import { ShoppingCart, Scale, Globe, Printer, FileText, Download, Receipt, Mail, Sparkles, FileSpreadsheet } from 'lucide-react';
 
 import { parseNFeXML } from './services/xmlParser';
@@ -27,6 +28,7 @@ import { useFiscalRadar } from './hooks/useFiscalRadar';
 
 export default function App() {
   const radar = useFiscalRadar();
+  const [currentView, setCurrentView] = useState<'LANDING' | 'APP'>('LANDING');
   const [currentXml, setCurrentXml] = useState<string>('');
   const [nfeParsed, setNfeParsed] = useState<NFeParsed | null>(null);
   const [auditoria, setAuditoria] = useState<ResumoAuditoriaNFe | null>(null);
@@ -249,6 +251,17 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  if (currentView === 'LANDING') {
+    return (
+      <LandingPage
+        onStartUsing={() => {
+          setCurrentView('APP');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1F2937] flex flex-col antialiased">
       <LoadingGameOverlay
@@ -288,12 +301,49 @@ export default function App() {
         onOpenMassImport={() => setIsMassImportOpen(true)}
         onOpenProductExport={() => setIsProductExportOpen(true)}
         onOpenAutopecasGuide={() => setIsStatesMatrixOpen(true)}
+        onOpenLanding={() => {
+          setCurrentView('LANDING');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         unreadCount={radar.unreadCount}
         countdownFormatted={radar.countdownFormatted}
         isSyncing={radar.isSyncing}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-3.5 space-y-3.5 no-print">
+      <main className="flex-1 max-w-[1640px] 2xl:max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-5 space-y-5 no-print">
+        {/* Desktop Executive Telemetry & Status Dock */}
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] no-print">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 text-xs">
+            {/* Status do Motor Tributário */}
+            <div className="flex items-center flex-wrap gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-slate-900 text-emerald-400 border border-emerald-500/30 shadow-2xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                Motor Tributário PR Ativo
+              </span>
+              <span className="text-slate-600 font-semibold hidden sm:inline">·</span>
+              <span className="text-slate-700 font-medium">
+                Regulamento: <strong className="text-slate-900">RICMS/PR (Lei 21.850/2023)</strong>
+              </span>
+              <span className="text-slate-300 hidden md:inline">|</span>
+              <span className="text-slate-700 font-medium hidden md:inline">
+                Alíquota Interna PR: <strong className="text-emerald-700 font-mono font-bold">19,50%</strong>
+              </span>
+              <span className="text-slate-300 hidden lg:inline">|</span>
+              <span className="text-slate-700 font-medium hidden lg:inline">
+                MVAs Oficiais Autopeças: <strong className="text-slate-900 font-mono">87,78% Nac</strong> · <strong className="text-slate-900 font-mono">104,86% Imp (4%)</strong>
+              </span>
+            </div>
+
+            {/* Selo de Proteção e Ações Rápidas */}
+            <div className="flex items-center gap-3 text-slate-500 text-[11px] font-mono">
+              <span className="inline-flex items-center gap-1.5 text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                ✓ Protocolo ICMS 41/2008 Homologado
+              </span>
+              <span className="hidden 2xl:inline text-slate-400">· 22 Regras de Auditoria por Item</span>
+            </div>
+          </div>
+        </section>
+
         {/* 1. Uploader de XML */}
         <section className="no-print">
           <XmlUploader
@@ -342,49 +392,50 @@ export default function App() {
         )}
 
         {auditoria && nfeParsed && (
-          <div id="audit-results-section" className="space-y-5 pt-2">
-            {/* 2. As Apenas 2 Opções de Visão */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-3 no-print gap-3">
-              <div className="flex items-center bg-white p-1.5 rounded-2xl border border-slate-200 text-xs font-semibold shadow-2xs">
+          <div id="audit-results-section" className="space-y-6 pt-2">
+            {/* 2. Seletor de Visão Executiva e Ações */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-slate-200 pb-4 no-print gap-4">
+              {/* Segmented Control Mac/Linear Style */}
+              <div className="flex items-center bg-slate-200/70 p-1.5 rounded-2xl border border-slate-200/80 text-xs sm:text-sm font-semibold shadow-2xs">
                 <button
                   onClick={() => setActiveTab('BUYER')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl transition-all cursor-pointer ${
                     activeTab === 'BUYER'
-                      ? 'bg-[#16A34A] text-white font-black shadow-md shadow-green-500/20'
-                      : 'text-slate-600 hover:text-[#1F2937]'
+                      ? 'bg-slate-900 text-emerald-400 font-bold shadow-xs border border-emerald-500/30'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <ShoppingCart className="h-4 w-4" />
-                  <span>1. VISÃO DO COMPRADOR (A Nota, Custo Real & ST)</span>
+                  <span>1. Visão do Comprador (Custo Real & ST)</span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('FISCAL')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl transition-all cursor-pointer ${
                     activeTab === 'FISCAL'
-                      ? 'bg-[#16A34A] text-white font-black shadow-md shadow-green-500/20'
-                      : 'text-slate-600 hover:text-[#1F2937]'
+                      ? 'bg-slate-900 text-emerald-400 font-bold shadow-xs border border-emerald-500/30'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Scale className="h-4 w-4" />
-                  <span>2. VISÃO FISCAL (Homologação & Borderô para Pagar a Guia)</span>
+                  <span>2. Visão Fiscal (Homologação & Guia)</span>
                 </button>
               </div>
 
-              {/* Botões Rápidos de Ação */}
+              {/* Botões Rápidos de Ação Corporativa */}
               <div className="flex items-center flex-wrap gap-2">
                 <button
                   onClick={() => setIsDanfeOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#1F2937] border border-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:border-slate-300"
                   title="Exibir o espelho oficial do DANFE"
                 >
-                  <FileText className="h-4 w-4 text-[#16A34A]" />
+                  <FileText className="h-4 w-4 text-emerald-600" />
                   <span>Exibir DANFE</span>
                 </button>
 
                 <button
                   onClick={handleDownloadXml}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#1F2937] border border-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:border-slate-300"
                   title="Baixar arquivo XML da NF-e"
                 >
                   <Download className="h-4 w-4 text-sky-600" />
@@ -393,11 +444,11 @@ export default function App() {
 
                 <button
                   onClick={() => setIsProductExportOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
                   title="Exportar produtos para planilha Excel (.xlsx) no padrão oficial de 8 colunas com separação inteligente de descrição e aplicação"
                 >
-                  <FileSpreadsheet className="h-4 w-4 text-[#16A34A]" />
-                  <span>Exportar Produtos (.xlsx)</span>
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                  <span>Exportar (.xlsx)</span>
                 </button>
 
                 {activeTab === 'BUYER' ? (
@@ -407,11 +458,11 @@ export default function App() {
                         setPrintSheetMode('SIMPLIFICADO');
                         setIsPrintSheetOpen(true);
                       }}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#16A34A] hover:bg-[#15803d] text-white text-xs font-black transition-all cursor-pointer shadow-md shadow-green-500/20"
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-emerald-700/20 active:scale-[0.98]"
                       title="Imprimir relatório simplificado (1 folha A4 anexo da NF)"
                     >
                       <Printer className="h-4 w-4" />
-                      <span>Imprimir Simplificado</span>
+                      <span>Imprimir A4</span>
                     </button>
 
                     <button
@@ -419,7 +470,7 @@ export default function App() {
                         setPrintSheetMode('ANALITICO');
                         setIsPrintSheetOpen(true);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#1F2937] border border-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                      className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:border-slate-300"
                       title="Imprimir relatório analítico detalhado item a item"
                     >
                       <span>Item a Item</span>
@@ -428,7 +479,7 @@ export default function App() {
                 ) : (
                   <button
                     onClick={() => setIsBorderoOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#16A34A] hover:bg-[#15803d] text-white text-xs font-black transition-all cursor-pointer shadow-md shadow-green-500/20"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-emerald-700/20 active:scale-[0.98]"
                     title="Imprimir borderô sintético da ST para o pagamento da guia"
                   >
                     <Receipt className="h-4 w-4" />
@@ -491,42 +542,50 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer Profissional */}
+      {/* Footer Profissional Enterprise */}
       <footer className="border-t border-slate-200 bg-white py-6 text-xs text-slate-600 no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
             {/* Coluna 1: Marca & Autoria */}
             <div className="space-y-1 text-center md:text-left">
-              <div className="font-extrabold text-[#16A34A] tracking-wider text-sm">MÃO NA RODA</div>
+              <div className="font-extrabold text-slate-900 tracking-wider text-sm flex items-center justify-center md:justify-start gap-1.5">
+                <span>MÃO NA <span className="text-emerald-600">RODA</span></span>
+                <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-900 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                  ENTERPRISE
+                </span>
+              </div>
               <p className="text-slate-500 text-[11px]">
-                Desenvolvido por <span className="text-[#1F2937] font-semibold">Rodrigo Narciso</span>
+                Desenvolvido por <strong className="text-slate-800">Rodrigo Narciso</strong> · Todos os direitos reservados
               </p>
             </div>
 
             {/* Coluna 2: Parâmetros Oficiais de Autopeças */}
-            <div className="text-center space-y-1 bg-[#F8FAFC] border border-slate-200 rounded-xl py-2.5 px-3">
-              <div className="text-[11px] text-[#1F2937] font-bold">MVA Oficial de Autopeças & Alíquota PR</div>
-              <div className="text-[10px] text-slate-500">
-                104,86% Imp · 87,78% Nac · 71,78% Orig · PR 19,5% (Lei 21.850/2023)
+            <div className="text-center space-y-1 bg-[#F8FAFC] border border-slate-200/90 rounded-xl py-2.5 px-3 shadow-2xs">
+              <div className="text-[11px] text-slate-900 font-bold">Motor Fiscal Homologado · Autopeças Paraná</div>
+              <div className="text-[10px] text-slate-500 font-mono">
+                MVA: 104,86% Imp · 87,78% Nac · 71,78% Orig · PR 19,5% (Lei 21.850/2023)
               </div>
             </div>
 
             {/* Coluna 3: Links e Versão */}
-            <div className="flex items-center justify-center md:justify-end gap-4 text-[11px]">
+            <div className="flex items-center justify-center md:justify-end gap-3 text-[11px] flex-wrap">
               <button
                 onClick={() => setIsStatesMatrixOpen(true)}
-                className="hover:text-[#16A34A] transition-colors cursor-pointer text-slate-700 font-semibold"
+                className="hover:text-emerald-700 transition-colors cursor-pointer text-slate-700 font-semibold"
               >
                 Alíquotas 27 UFs
               </button>
               <span className="text-slate-300">·</span>
               <button
                 onClick={() => setIsLegisOpen(true)}
-                className="hover:text-[#16A34A] transition-colors cursor-pointer text-slate-700 font-semibold"
+                className="hover:text-emerald-700 transition-colors cursor-pointer text-slate-700 font-semibold"
               >
                 Legislação
               </button>
               <span className="text-slate-300">·</span>
+              <span className="text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[10px]">
+                Licença Ativa
+              </span>
               <span className="text-slate-400 font-mono">v2026.4</span>
             </div>
           </div>

@@ -55,48 +55,48 @@ export const StateTaxRatesMatrix: React.FC = () => {
   });
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm mb-6">
+    <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.05)] mb-6">
       {/* Header do Módulo */}
       <div className="p-5 border-b border-slate-200 bg-[#F8FAFC] flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#166534] border border-[#16A34A]/30">
-              <Globe className="h-3.5 w-3.5 text-[#16A34A]" />
-              Tabela de Alíquotas Nacionais de Autopeças (27 UFs)
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-slate-900 text-emerald-400 border border-emerald-500/30">
+              <Globe className="h-3.5 w-3.5 text-emerald-400" />
+              Base Tributária Nacional de Autopeças (27 UFs)
             </span>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-500 font-medium">
               Alíquotas Internas Vigentes · MVAs Calculadas · Protocolo ICMS 41/2008
             </span>
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-[#1F2937] tracking-tight">
-            Tabela Completa de Alíquotas e MVAs Estado a Estado
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+            Matriz Tributária Nacional: Alíquotas e MVAs Ajustadas (27 Estados)
           </h2>
         </div>
 
         {/* Controles: Busca e Filtro de Região */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative min-w-[180px]">
+          <div className="relative min-w-[200px]">
             <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Filtrar Estado..."
+              placeholder="Filtrar por UF ou Estado..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-[#1F2937] placeholder-slate-400 focus:outline-none focus:border-[#16A34A]"
+              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 shadow-2xs"
             />
           </div>
 
           <select
             value={selectedRegion}
             onChange={(e) => setSelectedRegion(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-[#1F2937] font-medium focus:outline-none focus:border-[#16A34A]"
+            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 shadow-2xs cursor-pointer"
           >
-            <option value="TODAS">Todas as Regiões</option>
-            <option value="Sul">Sul</option>
-            <option value="Sudeste">Sudeste</option>
-            <option value="Centro-Oeste">Centro-Oeste</option>
-            <option value="Nordeste">Nordeste</option>
-            <option value="Norte">Norte</option>
+            <option value="TODAS">Todas as Regiões (Brasil)</option>
+            <option value="Sul">Região Sul</option>
+            <option value="Sudeste">Região Sudeste</option>
+            <option value="Centro-Oeste">Região Centro-Oeste</option>
+            <option value="Nordeste">Região Nordeste</option>
+            <option value="Norte">Região Norte</option>
           </select>
         </div>
       </div>

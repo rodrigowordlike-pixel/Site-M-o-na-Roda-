@@ -86,18 +86,18 @@ export const LegislativeRadarModal: React.FC<LegislativeRadarModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-xl flex flex-col my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md overflow-y-auto">
+      <div className="bg-white border border-slate-200/90 rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col my-auto">
         
-        {/* Top Header estilo Caixa de Mensagens */}
+        {/* Top Header estilo Terminal de Inteligência Fiscal */}
         <div className="p-4 sm:p-5 border-b border-slate-200 bg-[#F8FAFC] sticky top-0 z-20">
           <div className="flex items-start sm:items-center justify-between gap-3">
             
             <div className="flex items-center gap-3">
-              <div className="relative p-2.5 rounded-xl bg-[#DCFCE7] text-[#16A34A] border border-[#16A34A]/30 shrink-0">
+              <div className="relative p-2.5 rounded-xl bg-slate-900 text-emerald-400 border border-emerald-500/30 shrink-0 shadow-sm">
                 <Mail className="h-6 w-6" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-bold text-white shadow-md animate-pulse">
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white ring-2 ring-white">
                     {unreadCount}
                   </span>
                 )}
@@ -105,27 +105,27 @@ export const LegislativeRadarModal: React.FC<LegislativeRadarModalProps> = ({
               
               <div>
                 <div className="flex items-center flex-wrap gap-2">
-                  <h3 className="text-base sm:text-lg font-black text-[#1F2937] tracking-tight">
-                    CAIXA DE MENSAGENS · INFORMAÇÕES FISCAIS
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                    <span>INFORMAÇÕES FISCAIS · ATUALIZAÇÕES TRIBUTÁRIAS</span>
                   </h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#DCFCE7] text-[#166534] border border-[#16A34A]/30 font-mono">
-                    ANO ATUAL {currentYear}: {alteracoesFiltradas.length} {alteracoesFiltradas.length === 1 ? 'MUDANÇA' : 'MUDANÇAS'}
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-emerald-400 font-mono">
+                    ANO {currentYear}: {alteracoesFiltradas.length} ATUALIZAÇÕES
                   </span>
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-[#DCFCE7] text-[#166534] border border-[#16A34A]/30">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A] animate-ping"></span>
-                    Varredura a cada 2h
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                    Varredura Ativa (2h)
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Monitoramento contínuo das Portarias SEFAZ, Convênios CONFAZ e Diário Oficial da União no setor automotivo
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Monitoramento dos 27 Estados (Portarias SEFAZ, Convênios CONFAZ e Diário Oficial da União)
                 </p>
               </div>
             </div>
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-[#1F2937] transition-colors shrink-0 cursor-pointer"
-              title="Fechar Caixa de Mensagens"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors shrink-0 cursor-pointer"
+              title="Fechar Janela"
             >
               <X className="h-5 w-5" />
             </button>

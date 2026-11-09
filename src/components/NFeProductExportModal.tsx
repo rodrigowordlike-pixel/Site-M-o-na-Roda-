@@ -82,7 +82,7 @@ export const NFeProductExportModal: React.FC<NFeProductExportModalProps> = ({
     }
   };
 
-  const handleFieldChange = (nItem: number, field: 'descricao' | 'aplicacao', value: string) => {
+  const handleFieldChange = (nItem: number, field: 'descricao' | 'aplicacao' | 'qCom', value: string | number) => {
     setRows((prev) =>
       prev.map((r) => (r.nItem === nItem ? { ...r, [field]: value } : r))
     );
@@ -145,11 +145,11 @@ export const NFeProductExportModal: React.FC<NFeProductExportModalProps> = ({
                   Exportador Inteligente de Produtos para Cadastro (Excel .xlsx)
                 </h3>
                 <span className="text-[10px] uppercase font-bold tracking-wider bg-emerald-100 text-[#166534] border border-emerald-200 px-2 py-0.5 rounded-full">
-                  Padrão 8 Colunas
+                  Padrão 9 Colunas
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Separação automática de <strong>Descrição</strong> e <strong>Aplicação Veicular</strong>, preservando códigos e formatações fiscais.
+                Separação automática de <strong>Descrição</strong> e <strong>Aplicação Veicular</strong>, preservando <strong>Quantidade</strong>, códigos e formatações fiscais.
               </p>
             </div>
           </div>
@@ -266,24 +266,25 @@ export const NFeProductExportModal: React.FC<NFeProductExportModalProps> = ({
             </div>
           </div>
 
-          {/* Guia Explicativa dos 8 Campos Obrigatórios */}
+          {/* Guia Explicativa dos 9 Campos Obrigatórios */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 space-y-1">
             <div className="font-bold text-[#1F2937] flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-[#16A34A]" />
               <span>Padrão Oficial de Colunas da Planilha Excel (.xlsx):</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 font-mono text-[11px] pt-1">
+            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5 font-mono text-[11px] pt-1">
               <div className="bg-white p-1.5 rounded border border-slate-200">1. Cod DANF</div>
               <div className="bg-white p-1.5 rounded border border-slate-200 text-[#166534] font-bold">2. Descrição</div>
               <div className="bg-white p-1.5 rounded border border-slate-200 text-blue-700 font-bold">3. Aplicação</div>
-              <div className="bg-white p-1.5 rounded border border-slate-200">4. Preço líquido</div>
-              <div className="bg-white p-1.5 rounded border border-slate-200">5. Imposto</div>
-              <div className="bg-white p-1.5 rounded border border-slate-200">6. Cód. de barras</div>
-              <div className="bg-white p-1.5 rounded border border-slate-200">7. Cód. CEST</div>
-              <div className="bg-white p-1.5 rounded border border-slate-200">8. NCM</div>
+              <div className="bg-white p-1.5 rounded border border-slate-200 text-purple-700 font-bold">4. Qtd</div>
+              <div className="bg-white p-1.5 rounded border border-slate-200">5. Preço líquido</div>
+              <div className="bg-white p-1.5 rounded border border-slate-200">6. Imposto</div>
+              <div className="bg-white p-1.5 rounded border border-slate-200">7. Cód. de barras</div>
+              <div className="bg-white p-1.5 rounded border border-slate-200">8. Cód. CEST</div>
+              <div className="bg-white p-1.5 rounded border border-slate-200">9. NCM</div>
             </div>
             <p className="text-[11px] text-slate-500 pt-1">
-              • <strong>Dica</strong>: Você pode editar os campos de <em>Descrição</em> e <em>Aplicação</em> diretamente na tabela abaixo antes de exportar. A planilha final preserva zeros à esquerda e formatações exatas de códigos fiscais e de barras.
+              • <strong>Dica</strong>: Você pode editar os campos de <em>Descrição</em>, <em>Aplicação</em> e <em>Quantidade</em> diretamente na tabela abaixo antes de exportar. A planilha final preserva zeros à esquerda e formatações exatas de códigos fiscais e de barras.
             </p>
           </div>
 
@@ -304,7 +305,7 @@ export const NFeProductExportModal: React.FC<NFeProductExportModalProps> = ({
             </span>
           </div>
 
-          {/* Tabela de Pré-visualização com 8 Colunas Exatas */}
+          {/* Tabela de Pré-visualização com 9 Colunas Exatas */}
           <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
             <div className="max-h-[50vh] overflow-y-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -317,17 +318,20 @@ export const NFeProductExportModal: React.FC<NFeProductExportModalProps> = ({
                     <th className="py-2.5 px-3 border-r border-slate-200 min-w-[180px] text-blue-700">
                       3. Aplicação (Veículo/Anos)
                     </th>
-                    <th className="py-2.5 px-3 border-r border-slate-200 text-right w-28">4. Preço líq.</th>
-                    <th className="py-2.5 px-3 border-r border-slate-200 text-right w-24">5. Imposto</th>
-                    <th className="py-2.5 px-3 border-r border-slate-200 w-32">6. Cód. barras</th>
-                    <th className="py-2.5 px-3 border-r border-slate-200 w-24">7. CEST</th>
-                    <th className="py-2.5 px-3 w-28">8. NCM</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-center w-20 text-purple-700">
+                      4. Qtd
+                    </th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right w-28">5. Preço líq.</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right w-24">6. Imposto</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 w-32">7. Cód. barras</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 w-24">8. CEST</th>
+                    <th className="py-2.5 px-3 w-28">9. NCM</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-mono text-xs">
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400 font-sans">
+                      <td colSpan={9} className="py-8 text-center text-slate-400 font-sans">
                         Nenhum produto encontrado com o filtro aplicado.
                       </td>
                     </tr>
@@ -372,27 +376,43 @@ export const NFeProductExportModal: React.FC<NFeProductExportModalProps> = ({
                             </div>
                           </td>
 
-                          {/* 4. Preço líquido */}
+                          {/* 4. Quantidade (Qtd) */}
+                          <td className="py-2 px-2 border-r border-slate-100 text-center font-bold text-slate-800">
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="any"
+                              value={r.qCom}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                handleFieldChange(r.nItem, 'qCom', isNaN(val) ? 1 : val);
+                              }}
+                              className="w-16 px-1 py-1 rounded border border-transparent hover:border-slate-300 focus:border-purple-500 focus:bg-white text-xs font-bold text-purple-900 text-center bg-transparent"
+                              title="Clique para editar a quantidade do produto"
+                            />
+                          </td>
+
+                          {/* 5. Preço líquido */}
                           <td className="py-2 px-3 border-r border-slate-100 text-right text-slate-800">
                             R$ {r.precoLiquido.toFixed(2).replace('.', ',')}
                           </td>
 
-                          {/* 5. Imposto */}
+                          {/* 6. Imposto */}
                           <td className="py-2 px-3 border-r border-slate-100 text-right text-slate-800">
                             R$ {r.imposto.toFixed(2).replace('.', ',')}
                           </td>
 
-                          {/* 6. Cód. de barras */}
+                          {/* 7. Cód. de barras */}
                           <td className="py-2 px-3 border-r border-slate-100 text-slate-600">
                             {r.codBarras || <span className="text-slate-300">—</span>}
                           </td>
 
-                          {/* 7. Cód. CEST */}
+                          {/* 8. Cód. CEST */}
                           <td className="py-2 px-3 border-r border-slate-100 text-slate-700 font-bold">
                             {r.codCest || <span className="text-slate-300 font-normal">—</span>}
                           </td>
 
-                          {/* 8. NCM */}
+                          {/* 9. NCM */}
                           <td className="py-2 px-3 text-slate-700 font-bold">
                             {r.ncm}
                           </td>

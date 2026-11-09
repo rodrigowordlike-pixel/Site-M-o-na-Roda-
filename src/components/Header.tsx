@@ -108,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={onOpenProductExport}
                 className="h-8.5 flex items-center gap-1.5 px-3 rounded-lg bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-900 border border-emerald-200/80 hover:border-emerald-300 transition-all font-semibold cursor-pointer shadow-2xs active:scale-[0.98]"
-                title="Exportador Inteligente de Produtos de NF-e para Cadastro (Excel .xlsx - Padrão 8 Colunas)"
+                title="Exportador Inteligente de Produtos de NF-e para Cadastro (Excel .xlsx - Padrão 9 Colunas)"
               >
                 <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                 <span>Exportar Produtos (.xlsx)</span>

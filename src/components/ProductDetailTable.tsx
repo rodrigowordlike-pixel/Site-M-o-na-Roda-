@@ -177,7 +177,7 @@ export const ProductDetailTable: React.FC<ProductDetailTableProps> = ({
               type="button"
               onClick={onOpenProductExport}
               className="h-8.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/90 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-[0.98]"
-              title="Exportar produtos para planilha Excel (.xlsx) com padrão oficial de 8 colunas e separação de descrição e aplicação"
+              title="Exportar produtos para planilha Excel (.xlsx) com padrão oficial de 9 colunas e separação de descrição, aplicação e quantidade"
             >
               <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
               <span>Exportar (.xlsx)</span>

@@ -445,7 +445,7 @@ export default function App() {
                 <button
                   onClick={() => setIsProductExportOpen(true)}
                   className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                  title="Exportar produtos para planilha Excel (.xlsx) no padrão oficial de 8 colunas com separação inteligente de descrição e aplicação"
+                  title="Exportar produtos para planilha Excel (.xlsx) no padrão oficial de 9 colunas com separação inteligente de descrição, aplicação e quantidade"
                 >
                   <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                   <span>Exportar (.xlsx)</span>
@@ -693,7 +693,7 @@ export default function App() {
         }}
       />
 
-      {/* Modal: Exportador Inteligente de Produtos para Cadastro (Excel .xlsx - 8 Colunas) */}
+      {/* Modal: Exportador Inteligente de Produtos para Cadastro (Excel .xlsx - 9 Colunas) */}
       <NFeProductExportModal
         isOpen={isProductExportOpen}
         onClose={() => setIsProductExportOpen(false)}

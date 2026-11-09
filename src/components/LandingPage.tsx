@@ -351,7 +351,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartUsing }) => {
               </div>
               <h3 className="text-base font-bold text-slate-900">Exportador Inteligente para Excel (.xlsx)</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Separa automaticamente a descrição pura da peça de sua aplicação/modelo de veículo e gera planilha formatada em 8 colunas para você cadastrar no seu ERP.
+                Separa automaticamente a descrição pura da peça de sua aplicação/modelo de veículo e gera planilha formatada em 9 colunas (incluindo quantidade) para você cadastrar no seu ERP.
               </p>
             </div>
 

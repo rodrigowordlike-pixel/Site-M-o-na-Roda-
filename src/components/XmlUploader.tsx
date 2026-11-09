@@ -400,7 +400,7 @@ export const XmlUploader: React.FC<XmlUploaderProps> = ({
                   type="button"
                   onClick={onOpenProductExport}
                   className="font-bold text-emerald-950 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200/90 px-3.5 py-2 rounded-xl cursor-pointer transition-colors flex items-center gap-1.5 shadow-2xs"
-                  title="Exportar produtos de XML para planilha Excel (.xlsx) com padrão oficial de 8 colunas e separação de descrição e aplicação"
+                  title="Exportar produtos de XML para planilha Excel (.xlsx) com padrão oficial de 9 colunas e separação de descrição, aplicação e quantidade"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
                   <span>Exportar Produtos (.xlsx)</span>
